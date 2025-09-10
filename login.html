@@ -195,26 +195,7 @@
         </div>
     </footer>
 
-    <script>
-        const loginToggle = document.getElementById('loginToggle');
-        const signupToggle = document.getElementById('signupToggle');
-        const loginForm = document.getElementById('loginForm');
-        const signupForm = document.getElementById('signupForm');
-
-        signupToggle.addEventListener('click', () => {
-            loginToggle.classList.remove('active');
-            signupToggle.classList.add('active');
-            loginForm.style.display = 'none';
-            signupForm.style.display = 'block';
-        });
-
-        loginToggle.addEventListener('click', () => {
-            signupToggle.classList.remove('active');
-            loginToggle.classList.add('active');
-            signupForm.style.display = 'none';
-            loginForm.style.display = 'block';
-        });
-    </script>
+    <script src="script.js"></script>
 
 </body>
 </html>
