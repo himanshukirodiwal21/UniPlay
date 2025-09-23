@@ -86,6 +86,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
 document.addEventListener('DOMContentLoaded', () => {
 
+
+    // for date select in create_event.html
+
+
+
     // --- Logic for Login/Signup Page (login.html) ---
     const loginToggle = document.getElementById("loginToggle");
     const signupToggle = document.getElementById("signupToggle");
