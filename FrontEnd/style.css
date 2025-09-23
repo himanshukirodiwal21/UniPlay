@@ -460,6 +460,12 @@ footer {
     margin-bottom: 1rem;
 }
 
+.form-group input{
+    font-size: 18px;
+    height: 40px;
+
+}
+
 .registration-container input[type="text"],
 .registration-container input[type="email"],
 .registration-container select {
