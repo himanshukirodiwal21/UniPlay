@@ -179,3 +179,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+
+// --- Logic for User Registration (frontend -> backend) ---
+const signupForm = document.getElementById("signupForm");
+
+signupForm.addEventListener("submit", async (e) => {
+    e.preventDefault(); // Prevent page reload
+
+    const data = {
+        fullName: document.getElementById("signup-name").value.trim(),
+        username: document.getElementById("signup-username").value.trim(),
+        email: document.getElementById("signup-email").value.trim(),
+        password: document.getElementById("signup-password").value.trim(),
+    };
+
+    try {
+        const res = await fetch("http://localhost:8000/api/v1/users/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+            alert("User registered successfully!");
+            signupForm.reset();
+        } else {
+            alert(result.message || "Something went wrong!");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Something went wrong!");
+    }
+});
+

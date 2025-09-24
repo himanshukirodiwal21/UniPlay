@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login & Sign Up - UniPlay</title>
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/UniPlay/FrontEnd/assets/style.css">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
     <style>
@@ -29,7 +30,7 @@
             background-color: var(--white-color);
             padding: 3rem;
             border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
 
         .form-toggle {
@@ -74,13 +75,13 @@
             font-size: 1rem;
             font-family: var(--font-family);
         }
-        
+
         form h2 {
             text-align: center;
             margin-bottom: 2rem;
             color: var(--dark-color);
         }
-        
+
         form .btn {
             width: 100%;
             margin-top: 1rem;
@@ -101,6 +102,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <header>
@@ -138,15 +140,19 @@
                 <button type="submit" class="btn btn-primary">Login</button>
             </form>
 
-            <form id="signupForm" action="#" method="POST">
+            <form id="signupForm" action="" method="POST">
                 <h2>Create Account</h2>
                 <div class="form-group">
                     <label for="signup-name">Full Name</label>
-                    <input type="text" id="signup-name" name="fullname" required>
+                    <input type="text" id="signup-name" name="fullName" required>
                 </div>
                 <div class="form-group">
                     <label for="signup-email">Email Address</label>
                     <input type="email" id="signup-email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-username">Username</label>
+                    <input type="text" id="signup-username" name="username" required>
                 </div>
                 <div class="form-group">
                     <label for="signup-password">Create Password</label>
@@ -154,15 +160,17 @@
                 </div>
                 <button type="submit" class="btn btn-primary">Sign Up</button>
             </form>
+
         </div>
     </section>
-    
+
     <footer>
         <div class="container">
             <div class="footer-grid">
                 <div class="footer-col">
                     <h3>About UniPlay</h3>
-                    <p>The central hub for all things related to campus gaming and sports. Stay informed, get involved, and celebrate the spirit of competition.</p>
+                    <p>The central hub for all things related to campus gaming and sports. Stay informed, get involved,
+                        and celebrate the spirit of competition.</p>
                 </div>
                 <div class="footer-col">
                     <h3>Quick Links</h3>
@@ -195,7 +203,8 @@
         </div>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="/UniPlay/FrontEnd/assets/script.js"></script>
 
 </body>
+
 </html>
