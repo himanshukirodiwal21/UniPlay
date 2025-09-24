@@ -220,11 +220,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Redirect after 2.5s so user sees the toast
                     setTimeout(() => {
                         window.location.href = "index.html"; // your home page
-                    }, 2500);
+                    }, 2000);
 
                 } else {
                     Toastify({
-                        text: data.message || "Something went wrong!",
+                        text: data.message || "User already exits!",
                         duration: 3000,
                         gravity: "top",
                         position: "right",
