@@ -248,3 +248,54 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+document.addEventListener("DOMContentLoaded", () => {
+  const loginForm = document.getElementById("loginForm");
+  if (!loginForm) {
+    console.error("Login form not found (id=loginForm)");
+    return;
+  }
+
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value.trim();
+
+    try {
+      const res = await fetch("http://localhost:8000/api/v1/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // keep if backend sets cookies
+        body: JSON.stringify({ email, password }),
+      });
+
+      // Debug logs
+      console.log("HTTP status:", res.status, res.statusText);
+      console.log("Response headers:", Array.from(res.headers.entries()));
+
+      // Try parse JSON, fallback to text
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch (err) { data = text; }
+
+      console.log("Response body:", data);
+
+      if (res.ok) {
+        // success
+        Toastify({ text: data?.message || "Login successful", duration: 3000, gravity: "top", position: "right", backgroundColor: "#4CAF50" }).showToast();
+        // store token if present
+        const token = data?.data?.accessToken || data?.accessToken || null;
+        if (token) localStorage.setItem("accessToken", token);
+        setTimeout(()=> window.location.href = "index.html", 1200);
+      } else {
+        // show server reason if present
+        const errMsg = (data && (data.message || data.msg || JSON.stringify(data))) || `HTTP ${res.status}`;
+        Toastify({ text: errMsg, duration: 3500, gravity: "top", position: "right", backgroundColor: "#FF6B6B" }).showToast();
+      }
+    } catch (err) {
+      console.error("Fetch/network error:", err);
+      Toastify({ text: "Network or CORS error — check console", duration: 4000, gravity: "top", position: "right", backgroundColor: "#FF6B6B" }).showToast();
+    }
+  });
+});
+
