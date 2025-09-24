@@ -1,3 +1,3 @@
 // create database name
 
-export const DB_NAME = "uniplay"
+export const DB_NAME = "UniPlay"

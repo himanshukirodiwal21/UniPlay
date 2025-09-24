@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - UniPlay</title>
+
+    <link rel="stylesheet" href="../assets/style.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <style>
+        /* --- Profile Page Specific Styles --- */
+        .profile-section {
+            padding: 4rem 0;
+            background-color: var(--light-color);
+        }
+
+        .profile-header {
+            background-color: var(--white-color);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .profile-avatar {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid var(--primary-color);
+        }
+
+        .profile-info h1 {
+            font-size: 2.5rem;
+            color: var(--dark-color);
+            margin: 0;
+        }
+
+        .profile-info p {
+            font-size: 1.2rem;
+            color: #555;
+        }
+
+        .profile-actions {
+            margin-left: auto; /* Pushes the button to the far right */
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        @media (min-width: 992px) {
+            .profile-grid {
+                grid-template-columns: 1fr 2fr;
+            }
+        }
+        
+        .profile-card {
+            background-color: var(--white-color);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .profile-card h3 {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--light-color);
+            padding-bottom: 0.5rem;
+        }
+
+        /* --- View Mode Styles --- */
+        .details-list {
+            list-style: none;
+        }
+
+        .details-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .details-list li:last-child {
+            border-bottom: none;
+        }
+
+        .details-list .label {
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        .details-list .value {
+            color: #555;
+        }
+        
+        /* --- Edit Mode Form Styles --- */
+        .profile-form .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .profile-form label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-form input,
+        .profile-form select,
+        .profile-form textarea {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-family: var(--font-family);
+            font-size: 1rem;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Utility to hide elements */
+        .hidden {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <nav class="container">
+            <a href="index.html" class="logo">UniPlay</a>
+            <ul class="nav-links">
+                <li><a href="index.html#events">Events</a></li>
+                <li><a href="index.html#leaderboards">Leaderboards</a></li>
+                <li><a href="aboutus.html">About Us</a></li>
+                <li><a href="profile.html" class="active">My Profile</a></li>
+            </ul>
+            <a href="index.html" class="btn btn-secondary">Logout</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="profile-section">
+            <div class="container">
+
+                <div class="profile-header">
+                    <img src="https://placehold.co/400x400/005A9E/FFFFFF?text=HJ" alt="User Avatar" class="profile-avatar">
+                    <div class="profile-info">
+                        <h1>Himanshu</h1>
+                        <p>Computer Science & Engineering</p>
+                    </div>
+                    <div class="profile-actions">
+                        <button id="edit-profile-btn" class="btn btn-primary">Edit Profile</button>
+                    </div>
+                </div>
+
+                <div class="profile-card">
+
+                    <div id="view-mode">
+                        <h3><i class="fa-solid fa-user"></i> Personal Information</h3>
+                        <ul class="details-list">
+                            <li>
+                                <span class="label">Full Name:</span>
+                                <span id="view-fullname" class="value">Himanshu</span>
+                            </li>
+                            <li>
+                                <span class="label">Email:</span>
+                                <span id="view-email" class="value">himanshukirodiwal21@gmail.com</span>
+                            </li>
+                            <li>
+                                <span class="label">Department:</span>
+                                <span id="view-department" class="value">Computer Science</span>
+                            </li>
+                            <li>
+                                <span class="label">Year:</span>
+                                <span id="view-year" class="value">3rd Year</span>
+                            </li>
+                             <li>
+                                <span class="label">Primary Sport:</span>
+                                <span id="view-sport" class="value">Cricket</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div id="edit-mode" class="hidden">
+                         <h3><i class="fa-solid fa-edit"></i> Edit Your Information</h3>
+                         <form class="profile-form" id="profile-form">
+                             <div class="form-group">
+                                 <label for="fullname">Full Name</label>
+                                 <input type="text" id="fullname" value="Himanshu">
+                             </div>
+                             <div class="form-group">
+                                 <label for="email">Email Address</label>
+                                 <input type="email" id="email" value="himanshukirodiwal21@gmail.com" disabled>
+                                 <small>Email cannot be changed.</small>
+                             </div>
+                             <div class="form-group">
+                                 <label for="department">Department</label>
+                                 <select id="department">
+                                     <option value="Computer Science" selected>Computer Science</option>
+                                     <option value="Mechanical">Mechanical</option>
+                                     <option value="Civil">Civil</option>
+                                     <option value="Electrical">Electrical</option>
+                                 </select>
+                             </div>
+                             <div class="form-group">
+                                 <label for="year">Year</label>
+                                 <select id="year">
+                                     <option value="1st Year">1st Year</option>
+                                     <option value="2nd Year">2nd Year</option>
+                                     <option value="3rd Year" selected>3rd Year</option>
+                                     <option value="4th Year">4th Year</option>
+                                 </select>
+                             </div>
+                             <div class="form-group">
+                                 <label for="sport">Primary Sport</label>
+                                  <select id="sport">
+                                     <option value="Cricket" selected>Cricket</option>
+                                     <option value="Football">Football</option>
+                                     <option value="Basketball">Basketball</option>
+                                     <option value="E-Sports">E-Sports</option>
+                                     <option value="Chess">Chess</option>
+                                 </select>
+                             </div>
+                             <div class="form-actions">
+                                 <button type="submit" class="btn btn-primary">Save Changes</button>
+                                 <button type="button" id="cancel-edit-btn" class="btn btn-secondary">Cancel</button>
+                             </div>
+                         </form>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container footer-grid">
+            <div class="footer-col">
+                <h3>UniPlay</h3>
+                <p>The central hub for university sports and gaming. Celebrating competition and teamwork in Kota.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="#events">Events</a></li>
+                    <li><a href="#leaderboards">Leaderboards</a></li>
+                    <li><a href="#news">News</a></li>
+                    <li><a href="#about">About Us</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Connect With Us</h4>
+                <div class="social-icons">
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2025 UniPlay. All Rights Reserved. | <a href="#">Privacy Policy</a> | <a href="#">Terms of Service</a></p>
+        </div>
+    </footer>
+    
+    <script>
+        // Basic script to toggle between view and edit modes
+        const editProfileBtn = document.getElementById('edit-profile-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const viewMode = document.getElementById('view-mode');
+        const editMode = document.getElementById('edit-mode');
+
+        editProfileBtn.addEventListener('click', () => {
+            viewMode.classList.add('hidden');
+            editMode.classList.remove('hidden');
+        });
+
+        cancelEditBtn.addEventListener('click', () => {
+            editMode.classList.add('hidden');
+            viewMode.classList.remove('hidden');
+        });
+
+        // Add form submission logic here
+        const profileForm = document.getElementById('profile-form');
+        profileForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            // 1. Get updated values from form fields
+            const newFullName = document.getElementById('fullname').value;
+            const newDepartment = document.getElementById('department').value;
+            const newYear = document.getElementById('year').value;
+            const newSport = document.getElementById('sport').value;
+            
+            // 2. Update the "view mode" text with the new values
+            document.getElementById('view-fullname').textContent = newFullName;
+            document.getElementById('view-department').textContent = newDepartment;
+            document.getElementById('view-year').textContent = newYear;
+            document.getElementById('view-sport').textContent = newSport;
+            
+            // 3. (Optional) Send this data to a server here to save it permanently.
+            
+            // 4. Switch back to view mode
+            editMode.classList.add('hidden');
+            viewMode.classList.remove('hidden');
+
+            alert('Profile updated successfully!');
+        });
+    </script>
+
+</body>
+</html>
