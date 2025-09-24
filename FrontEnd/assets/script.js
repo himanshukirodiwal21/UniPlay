@@ -182,36 +182,69 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // --- Logic for User Registration (frontend -> backend) ---
-const signupForm = document.getElementById("signupForm");
+document.addEventListener('DOMContentLoaded', () => {
 
-signupForm.addEventListener("submit", async (e) => {
-    e.preventDefault(); // Prevent page reload
+    const signupForm = document.getElementById("signupForm");
 
-    const data = {
-        fullName: document.getElementById("signup-name").value.trim(),
-        username: document.getElementById("signup-username").value.trim(),
-        email: document.getElementById("signup-email").value.trim(),
-        password: document.getElementById("signup-password").value.trim(),
-    };
+    if (signupForm) {
+        signupForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
 
-    try {
-        const res = await fetch("http://localhost:8000/api/v1/users/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
+            const formData = {
+                fullName: document.getElementById("signup-name").value.trim(),
+                username: document.getElementById("signup-username").value.trim(),
+                email: document.getElementById("signup-email").value.trim(),
+                password: document.getElementById("signup-password").value.trim(),
+            };
+
+            try {
+                const response = await fetch("http://localhost:8000/api/v1/users/register", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(formData),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    Toastify({
+                        text: data.message || "User registered successfully!",
+                        duration: 3000,
+                        gravity: "top",
+                        position: "right",
+                        backgroundColor: "#4CAF50", // green for success
+                    }).showToast();
+
+                    // Redirect after 2.5s so user sees the toast
+                    setTimeout(() => {
+                        window.location.href = "index.html"; // your home page
+                    }, 2500);
+
+                } else {
+                    Toastify({
+                        text: data.message || "Something went wrong!",
+                        duration: 3000,
+                        gravity: "top",
+                        position: "right",
+                        backgroundColor: "#FF6B6B", // red for error
+                    }).showToast();
+                }
+
+            } catch (err) {
+                console.error(err);
+                Toastify({
+                    text: "Error connecting to server!",
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "#FF6B6B",
+                }).showToast();
+            }
         });
-
-        const result = await res.json();
-
-        if (res.ok) {
-            alert("User registered successfully!");
-            signupForm.reset();
-        } else {
-            alert(result.message || "Something went wrong!");
-        }
-    } catch (err) {
-        console.error(err);
-        alert("Something went wrong!");
     }
+
 });
+
 
