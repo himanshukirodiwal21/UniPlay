@@ -69,6 +69,37 @@ const LoginPage = () => {
     }
   };
 
+  const handleLogin = async (e) => {
+  e.preventDefault(); // form reload ko roke
+
+  const formData = new FormData(e.target);
+  const email = formData.get("email");
+  const password = formData.get("password");
+
+  try {
+    const res = await fetch("http://localhost:8000/api/v1/users/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      credentials: "include",
+    });
+
+    const data = await res.json();
+    console.log("Login response:", data);
+
+    if (res.ok) {
+      toast.success("User logged in successfully!", { position: "top-right" });
+      // Optionally redirect after login
+    } else {
+      toast.error(data?.message || "Login failed", { position: "top-right" });
+    }
+  } catch (err) {
+    console.error(err);
+    toast.error("Something went wrong", { position: "top-right" });
+  }
+};
+
+
 
   return (
 
@@ -93,7 +124,7 @@ const LoginPage = () => {
 
         {/* Login Form */}
         {activeForm === "login" && (
-          <form id="loginForm">
+          <form id="loginForm" onSubmit={handleLogin}>
             <h2>Welcome Back!</h2>
             <div className="form-group">
               <label>Email Address</label>
