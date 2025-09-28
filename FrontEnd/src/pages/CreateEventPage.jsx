@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
-const CreateEventPage = () => {
+const eventPage = () => {
   const [name, setName] = useState("");
   const [date, setDate] = useState(""); // will store YYYY-MM-DD
   const [location, setLocation] = useState("");
@@ -82,4 +82,4 @@ const CreateEventPage = () => {
   );
 };
 
-export default CreateEventPage;
+export default eventPage;

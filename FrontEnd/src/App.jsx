@@ -1,9 +1,13 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
+import AdminPanel from "./pages/AdminPanel";
+import UserPanel from "./pages/UserPanel";
+
 import EventPage from "./pages/EventPage";
-import CreateEventPage from "./pages/CreateEventPage";
+
 import LoginPage from "./pages/LoginPage";
+import RequestEvent from "./pages/RequestEvent";
 
 
 function App() {
@@ -11,7 +15,10 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/create-event" element={<CreateEventPage />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/user" element={<UserPanel />} />
+        <Route path="/request-event" element={<RequestEvent />} />
+        <Route path="/create-event" element={<eventPage />} />
         <Route path="/event/:eventId" element={<EventPage />} />
         <Route path="/login" element={<LoginPage />} />
       </Routes>

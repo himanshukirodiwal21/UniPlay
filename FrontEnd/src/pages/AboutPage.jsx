@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function CreateEventPage() {
+function eventPage() {
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
   const [location, setLocation] = useState('');
@@ -53,4 +53,4 @@ function CreateEventPage() {
   );
 }
 
-export default CreateEventPage;
+export default eventPage;

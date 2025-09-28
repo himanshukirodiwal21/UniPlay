@@ -6,8 +6,23 @@ const HomePage = () => {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
-    const savedEvents = JSON.parse(localStorage.getItem("uniplay_events")) || [];
-    setEvents(savedEvents);
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/events"); // backend API
+        if (!res.ok) throw new Error("Failed to fetch events");
+        const data = await res.json();
+        setEvents(data);
+        localStorage.setItem("uniplay_events", JSON.stringify(data)); // optional caching
+      } catch (err) {
+        console.error("Error fetching events:", err);
+        // fallback to localStorage
+        const savedEvents =
+          JSON.parse(localStorage.getItem("uniplay_events")) || [];
+        setEvents(savedEvents);
+      }
+    };
+
+    fetchEvents();
   }, []);
 
   return (
@@ -39,10 +54,10 @@ const HomePage = () => {
         <section id="events" className="container section">
           <h2 className="section-title">🔥 Upcoming Events</h2>
           <div className="card-grid">
-            {/* Dynamic events from localStorage */}
+            {/* Dynamic events from backend/localStorage */}
             {events.length > 0 &&
-              events.map((event, index) => (
-                <div key={index} className="card">
+              events.map((event) => (
+                <div key={event._id} className="card">
                   <img src={event.image} alt={event.name} />
                   <div className="card-content">
                     <h3>{event.name}</h3>
@@ -54,12 +69,17 @@ const HomePage = () => {
                       <i className="fa-solid fa-location-dot"></i>{" "}
                       {event.location}
                     </p>
-                    <a href={`/event/${index}`} className="btn btn-secondary">View Details</a>
+                    <a
+                      href={`/event/${event._id}`}
+                      className="btn btn-secondary"
+                    >
+                      View Details
+                    </a>
                   </div>
                 </div>
               ))}
 
-            {/* Fallback hardcoded events if localStorage is empty */}
+            {/* Fallback hardcoded events */}
             {events.length === 0 && (
               <>
                 <div className="card">
@@ -107,8 +127,8 @@ const HomePage = () => {
             )}
           </div>
           <br />
-          <a href="/create-event" className="btn btn-primary">
-            Create Event
+          <a href="/request-event" className="btn btn-primary">
+            Request Event
           </a>
         </section>
 
