@@ -22,7 +22,7 @@ import requestEventRouter from './routes/event.routes.js';
 
 
 // routes declaration// Routes
-app.use("/api/v1/users", userRouter);          // User routes
+app.use("/api/v1/users", userRouter);  // User routes 
 app.use("/api/v1", requestEventRouter);        // Event routes
 
 
