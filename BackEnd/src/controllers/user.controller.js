@@ -1,4 +1,3 @@
-
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js"
 import { User } from "../models/user.models.js"
@@ -34,13 +33,44 @@ const registerUser = async (req, res) => {
             return res.status(400)
                 .json({ success: false, message: "All fields are required" })
         }
-        const ExistUser = await User.findOne({ email })
-        if (ExistUser) {
-            return res.status(400).json({ success: false, message: "User Already Exists Please login" })
-        }
-        const hashPassword = await bcrypt.hashSync(password, 10)
-        const verficationCode = Math.floor(100000 + Math.random() * 90000).toString()
 
+        // ⭐ CHECK IF USER ALREADY EXISTS
+        const ExistUser = await User.findOne({ 
+            $or: [{ email }, { username }] 
+        })
+
+        if (ExistUser) {
+            // ⭐ NAYA LOGIC: Agar user unverified hai toh new OTP bhejo
+            if (!ExistUser.isVerified) {
+                // Generate new verification code
+                const verficationCode = Math.floor(100000 + Math.random() * 900000).toString()
+                
+                // Update existing user with new OTP and password (if changed)
+                ExistUser.verficationCode = verficationCode
+                ExistUser.password = password // Password update (will be hashed by pre-save hook)
+                
+                await ExistUser.save()
+                
+                // Send new OTP email
+                await SendVerficationCode(ExistUser.email, verficationCode)
+                
+                return res.status(200).json({ 
+                    success: true, 
+                    message: " OTP Resent to " + email + ". Please verify to continue.",
+                    user: ExistUser 
+                })
+            }
+            
+            // Agar user already verified hai
+            return res.status(409).json({ 
+                success: false, 
+                message: "User already exists and is verified. Please login." 
+            })
+        }
+
+        // ⭐ NEW USER REGISTRATION
+        const hashPassword = await bcrypt.hashSync(password, 10)
+        const verficationCode = Math.floor(100000 + Math.random() * 900000).toString()
 
         const user = new User({
             email,
@@ -51,14 +81,20 @@ const registerUser = async (req, res) => {
         })
 
         await user.save()
-        SendVerficationCode(user.email, verficationCode)
-        return res.status(200).json({ success: true, message: "User Register Successfully", user })
-
+        await SendVerficationCode(user.email, verficationCode)
+        
+        return res.status(200).json({ 
+            success: true, 
+            message: "User registered successfully. OTP sent to your email.", 
+            user 
+        })
 
     } catch (error) {
         console.log(error)
-        return res.status(500).json({ success: false, message: "internal server error" })
-
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal server error" 
+        })
     }
 }
 
@@ -66,44 +102,51 @@ const Verifyemail = async (req, res) => {
     try {
 
         const { code } = req.body
+        
+        if (!code) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Verification code is required" 
+            })
+        }
+
         const user = await User.findOne({
             verficationCode: code
         })
+
         if (!user) {
-            return res.status(400).json({ success: false, message: "Invalid or expired code" })
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid or expired verification code" 
+            })
         }
 
-        user.isVerified = true,
-            user.verficationCode = undefined;
-        await user.save();
+        user.isVerified = true
+        user.verficationCode = undefined
+        await user.save()
+        
         await WelcomeEmail(user.email, user.fullName)
-        return res.status(200).json({ success: true, message: "Email Verifed Successfully" })
-
-
+        
+        return res.status(200).json({ 
+            success: true, 
+            message: "Email verified successfully" 
+        })
 
     } catch (error) {
-        return res.status(400).json({ success: false, message: "Internal Server" })
+        console.log(error)
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal server error" 
+        })
     }
 }
 
 const loginUser = asyncHandler(async (req, res) => {
-    //  req body => data
-    // uername or email
-    // find the user
-    // password check
-    // access and refersh token
-    // send cookie
-    // send response
-
-
-
     const { email, username, password } = req.body
-    console.log(email);
 
     if (!username && !email) {
         throw new ApiError(400, "username or email is required")
     }
-
 
     const user = await User.findOne({
         $or: [{ username }, { email }]
@@ -113,24 +156,40 @@ const loginUser = asyncHandler(async (req, res) => {
         throw new ApiError(404, "User does not exist")
     }
 
-    const isPasswordValid = await user.isPasswordCorrect(password)
-
+    // ⭐ CHECK VERIFICATION STATUS - Generate new OTP for unverified users
     if (!user.isVerified) {
-        throw new ApiError(403, "Please verify your email before login");
+        // Generate and send new OTP
+        const verficationCode = Math.floor(100000 + Math.random() * 900000).toString()
+        user.verficationCode = verficationCode
+        await user.save()
+        await SendVerficationCode(user.email, verficationCode)
+        
+        return res.status(403).json({
+            success: false,
+            needsVerification: true,
+            user: {
+                email: user.email,
+                fullName: user.fullName,
+                username: user.username
+            },
+            message: "Account not verified. New OTP sent to your email. Please verify to continue."
+        });
     }
+
+    const isPasswordValid = await user.isPasswordCorrect(password)
 
     if (!isPasswordValid) {
         throw new ApiError(401, "Invalid user credentials")
     }
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
-
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
 
     const options = {
         httpOnly: true,
-        secure: true
-    }
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax"
+    };
 
     return res
         .status(200)
@@ -139,16 +198,13 @@ const loginUser = asyncHandler(async (req, res) => {
         .json(
             new ApiResponse(
                 200, {
-                user: loggedInUser, accessToken,
-                refreshToken
-            },
+                    user: loggedInUser, 
+                    accessToken,
+                    refreshToken
+                },
                 "User logged in successfully"
             )
         )
-
-
-        
-
 })
 
 export { registerUser, loginUser, Verifyemail };
