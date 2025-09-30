@@ -5,25 +5,23 @@ import Footer from "../components/Footer";
 const HomePage = () => {
   const [events, setEvents] = useState([]);
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const res = await fetch("http://localhost:8000/api/events"); // backend API
-        if (!res.ok) throw new Error("Failed to fetch events");
-        const data = await res.json();
-        setEvents(data);
-        localStorage.setItem("uniplay_events", JSON.stringify(data)); // optional caching
-      } catch (err) {
-        console.error("Error fetching events:", err);
-        // fallback to localStorage
-        const savedEvents =
-          JSON.parse(localStorage.getItem("uniplay_events")) || [];
-        setEvents(savedEvents);
-      }
-    };
+ useEffect(() => {
+  const fetchEvents = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/api/events");
+      if (!res.ok) throw new Error("Failed to fetch events");
+      const data = await res.json();
+      setEvents(data);
+      // localStorage.setItem("uniplay_events", JSON.stringify(data)); // REMOVED
+    } catch (err) {
+      console.error("Error fetching events:", err);
+      // fallback - show empty array
+      setEvents([]);
+    }
+  };
 
-    fetchEvents();
-  }, []);
+  fetchEvents();
+}, []);
 
   return (
     <>

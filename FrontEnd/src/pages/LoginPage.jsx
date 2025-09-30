@@ -561,9 +561,12 @@ export default function AuthPages() {
     const data = await res.json();
     
     if (res.ok) {
-      setLoggedInUser(data.data.user);
-      setLoginData({ email: "", password: "" });
-    } else if (res.status === 403 && data.needsVerification) {
+  // Store user in localStorage for persistence
+  localStorage.setItem('currentUser', JSON.stringify(data.data.user));
+  
+  // Redirect to home page
+  window.location.href = '/';
+} else if (res.status === 403 && data.needsVerification) {
       setFormData({
         fullName: data.user.fullName,
         username: data.user.username,
@@ -821,63 +824,65 @@ export default function AuthPages() {
 };
 
 // If user is logged in, show home page
-if (loggedInUser) {
-  return (
-    <div style={styles.container}>
-      <div style={{ ...styles.card, maxWidth: "800px", padding: "40px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" }}>
-          <h1 style={{ margin: 0, color: "#1f2937" }}>Welcome, {loggedInUser.fullName}!</h1>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <div style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "20px",
-              fontWeight: "600"
-            }}>
-              {loggedInUser.fullName.charAt(0).toUpperCase()}
-            </div>
-            <button onClick={handleLogout} style={{
-              padding: "8px 16px",
-              background: "#ef4444",
-              color: "#fff",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "500"
-            }}>
-              Logout
-            </button>
-          </div>
-        </div>
+// if (loggedInUser) {
+//   return (
+//     <div style={styles.container}>
+//       <div style={{ ...styles.card, maxWidth: "800px", padding: "40px" }}>
+//         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" }}>
+//           <h1 style={{ margin: 0, color: "#1f2937" }}>Welcome, {loggedInUser.fullName}!</h1>
+//           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+//             <div style={{
+//               width: "48px",
+//               height: "48px",
+//               borderRadius: "50%",
+//               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+//               color: "#fff",
+//               display: "flex",
+//               alignItems: "center",
+//               justifyContent: "center",
+//               fontSize: "20px",
+//               fontWeight: "600"
+//             }}>
+//               {loggedInUser.fullName.charAt(0).toUpperCase()}
+//             </div>
+//             <button onClick={handleLogout} style={{
+//               padding: "8px 16px",
+//               background: "#ef4444",
+//               color: "#fff",
+//               border: "none",
+//               borderRadius: "8px",
+//               cursor: "pointer",
+//               fontWeight: "500"
+//             }}>
+//               Logout
+//             </button>
+//           </div>
+//         </div>
 
-        <div style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          padding: "32px",
-          borderRadius: "16px",
-          color: "#fff",
-          marginBottom: "24px"
-        }}>
-          <h2 style={{ margin: "0 0 16px 0" }}>Your Profile</h2>
-          <div style={{ display: "grid", gap: "12px" }}>
-            <p style={{ margin: 0 }}><strong>Name:</strong> {loggedInUser.fullName}</p>
-            <p style={{ margin: 0 }}><strong>Username:</strong> {loggedInUser.username}</p>
-            <p style={{ margin: 0 }}><strong>Email:</strong> {loggedInUser.email}</p>
-          </div>
-        </div>
+//         <div style={{
+//           background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+//           padding: "32px",
+//           borderRadius: "16px",
+//           color: "#fff",
+//           marginBottom: "24px"
+//         }}>
+//           <h2 style={{ margin: "0 0 16px 0" }}>Your Profile</h2>
+//           <div style={{ display: "grid", gap: "12px" }}>
+//             <p style={{ margin: 0 }}><strong>Name:</strong> {loggedInUser.fullName}</p>
+//             <p style={{ margin: 0 }}><strong>Username:</strong> {loggedInUser.username}</p>
+//             <p style={{ margin: 0 }}><strong>Email:</strong> {loggedInUser.email}</p>
+//           </div>
+//         </div>
 
-        <div style={{ textAlign: "center", color: "#6b7280" }}>
-          <p>You are successfully logged in!</p>
-        </div>
-      </div>
-    </div>
-  );
-}
+//         <div style={{ textAlign: "center", color: "#6b7280" }}>
+//           <p>You are successfully logged in!</p>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+
 
 
 
