@@ -1,5 +1,4 @@
-import {Event} from "../models/event.models.js";
-
+import {Event} from "../models/event.models.js"; // make sure default export
 
 // Create a new event
 const createEvent = async (req, res) => {
@@ -68,4 +67,60 @@ const getEventById = async (req, res) => {
   }
 };
 
-export { createEvent, getEvents, getEventById }
+// Get all pending event requests (admin only)
+const getPendingEvents = async (req, res) => {
+  try {
+    const events = await Event.find({ status: "pending" }).sort({ date: 1 });
+    return res.status(200).json(events);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// Approve an event request
+const approveEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await Event.findByIdAndUpdate(
+      id,
+      { status: "approved" },
+      { new: true }
+    );
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+    return res.status(200).json({ message: "Event approved", event });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// Decline an event request
+const declineEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await Event.findByIdAndUpdate(
+      id,
+      { status: "declined" },
+      { new: true }
+    );
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+    return res.status(200).json({ message: "Event declined", event });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server Error" });
+  }
+};
+
+export {
+  createEvent,
+  getEvents,
+  getEventById,
+  getPendingEvents,
+  approveEvent,
+  declineEvent,
+};
