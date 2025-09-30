@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-<<<<<<< HEAD
 import { User, LogOut, Settings } from "lucide-react";
-=======
 import UniPlayLogo from "../assets/UniPlay.svg";
->>>>>>> a3f0b1580d75a0e1c010db9a7d8dec5018de3951
 
 function Header() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -12,10 +9,9 @@ function Header() {
   const dropdownRef = useRef(null);
 
   useEffect(() => {
-    const user = localStorage.getItem('currentUser');
-    if (user) {
-      setCurrentUser(JSON.parse(user));
-    }
+    // Fetch current user from backend/localStorage
+    const user = localStorage.getItem("currentUser");
+    if (user) setCurrentUser(JSON.parse(user));
   }, []);
 
   useEffect(() => {
@@ -24,15 +20,15 @@ function Header() {
         setShowDropdown(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+    localStorage.removeItem("currentUser");
     setCurrentUser(null);
     setShowDropdown(false);
-    window.location.href = '/login';
+    window.location.href = "/login";
   };
 
   return (
@@ -44,22 +40,13 @@ function Header() {
         </Link>
 
         <ul className="nav-links">
-          <li>
-            <Link to="/">Events</Link>
-          </li>
-          <li>
-            <Link to="/">Leaderboards</Link>
-          </li>
-          <li>
-            <Link to="/">News</Link>
-          </li>
-          <li>
-            <Link to="/about">About Us</Link>
-          </li>
+          <li><Link to="/">Events</Link></li>
+          <li><Link to="/">Leaderboards</Link></li>
+          <li><Link to="/">News</Link></li>
+          <li><Link to="/about">About Us</Link></li>
         </ul>
 
         <div className="auth-buttons">
-<<<<<<< HEAD
           {currentUser ? (
             <div className="user-profile-dropdown" ref={dropdownRef}>
               <div
@@ -76,51 +63,47 @@ function Header() {
                     <div className="dropdown-user-name">{currentUser.fullName}</div>
                     <div className="dropdown-user-email">{currentUser.email}</div>
                   </div>
-                  
-                  <Link to="/profile" className="dropdown-item" onClick={() => setShowDropdown(false)}>
-                    <User size={18} />
-                    <span>My Profile</span>
+
+                  <Link
+                    to="/profile"
+                    className="dropdown-item"
+                    onClick={() => setShowDropdown(false)}
+                  >
+                    <User size={18} /> <span>My Profile</span>
                   </Link>
-                  
-                  <Link to="/settings" className="dropdown-item" onClick={() => setShowDropdown(false)}>
-                    <Settings size={18} />
-                    <span>Settings</span>
+
+                  <Link
+                    to="/settings"
+                    className="dropdown-item"
+                    onClick={() => setShowDropdown(false)}
+                  >
+                    <Settings size={18} /> <span>Settings</span>
                   </Link>
-                  
+
                   <button onClick={handleLogout} className="dropdown-item">
-                    <LogOut size={18} />
-                    <span>Logout</span>
+                    <LogOut size={18} /> <span>Logout</span>
                   </button>
                 </div>
               )}
             </div>
           ) : (
             <>
-              <Link to="/login" state={{ form: "login" }} className="btn btn-primary">
+              <Link
+                to="/login"
+                state={{ form: "login" }}
+                className="btn btn-primary"
+              >
                 Login
               </Link>
-              <Link to="/login" state={{ form: "signup" }} className="btn btn-secondary">
+              <Link
+                to="/login"
+                state={{ form: "signup" }}
+                className="btn btn-secondary"
+              >
                 Sign Up
               </Link>
             </>
           )}
-=======
-          {/* Pass state to indicate which form to show */}
-          <Link
-            to="/login"
-            state={{ form: "login" }}
-            className="btn btn-primary"
-          >
-            Login
-          </Link>
-          <Link
-            to="/login"
-            state={{ form: "signup" }}
-            className="btn btn-secondary"
-          >
-            Sign Up
-          </Link>
->>>>>>> a3f0b1580d75a0e1c010db9a7d8dec5018de3951
         </div>
       </nav>
     </header>
