@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { useNavigate } from "react-router-dom";
+
 
 const RequestEvent = () => {
   const [formData, setFormData] = useState({
@@ -21,50 +23,73 @@ const RequestEvent = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const [message, setMessage] = useState("");
+  
+  const navigate = useNavigate();
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  e.preventDefault();
+  setLoading(true);
+  setMessage("");
 
-    try {
-      const response = await fetch("http://localhost:8000/api/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          date: formData.date,
-          location: formData.venue,         // map venue -> location
-          eligibility: formData.eligibility,
-          image: formData.thumbnail,        // map thumbnail -> image
-          registrationFee: formData.fee,    // map fee -> registrationFee
-          winningPrize: formData.prize,     // map prize -> winningPrize
-          description: formData.description,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to submit event request");
-      }
-
-      alert("✅ Your event has been submitted successfully!");
-      setFormData({
-        name: "",
-        date: "",
-        venue: "",
-        eligibility: "",
-        thumbnail: "",
-        prize: "",
-        fee: "",
-        description: "",
-      });
-    } catch (error) {
-      console.error(error);
-      alert("❌ Something went wrong. Please try again.");
-    } finally {
+  try {
+    // Optional: validate thumbnail URL
+    if (formData.thumbnail && !/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/i.test(formData.thumbnail)) {
+      alert("Please enter a valid image URL for the thumbnail.");
       setLoading(false);
+      return;
     }
-  };
+
+    // Send data to backend
+    const response = await fetch("http://localhost:8000/api/v1/requestEvent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: formData.name,
+        date: formData.date,
+        location: formData.venue,
+        eligibility: formData.eligibility,
+        image: formData.thumbnail,
+        registrationFee: Number(formData.fee) || 0,
+        winningPrize: Number(formData.prize) || 0,
+        description: formData.description,
+        status: "pending", // default status
+        requestedAt: new Date().toISOString(), // timestamp
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) throw new Error(result.message || "Failed to submit event request");
+
+    // Show success message
+    setMessage("✅ Your event request has been submitted successfully! Redirecting to Home...");
+
+    // Reset form
+    setFormData({
+      name: "",
+      date: "",
+      venue: "",
+      eligibility: "",
+      thumbnail: "",
+      prize: "",
+      fee: "",
+      description: "",
+    });
+
+    // Redirect to home page after 2 seconds
+    setTimeout(() => {
+      navigate("/");
+    }, 2000);
+
+  } catch (error) {
+    console.error("Error submitting event request:", error);
+    setMessage(`❌ Error: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <>
@@ -176,13 +201,16 @@ const RequestEvent = () => {
             </div>
 
             <div className="form-actions">
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={loading}
-              >
-                {loading ? "Submitting..." : "Submit Request"}
-              </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={loading}
+                >
+                  {loading ? "Submitting..." : "Submit Request"}
+                </button>
+
+                {/* Display success or error message */}
+                {message && <p className="form-message">{message}</p>}
             </div>
           </form>
         </div>

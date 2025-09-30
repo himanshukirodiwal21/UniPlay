@@ -1,28 +1,27 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
-import AdminPanel from "./pages/AdminPanel";
+import AdminEventRequests from "./pages/AdminEventRequests";
 import UserPanel from "./pages/UserPanel";
-
 import EventPage from "./pages/EventPage";
-
 import LoginPage from "./pages/LoginPage";
 import RequestEvent from "./pages/RequestEvent";
+import AboutPage from "./pages/AboutPage";
 
+// make sure import matches usage
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/user" element={<UserPanel />} />
-        <Route path="/request-event" element={<RequestEvent />} />
-        <Route path="/create-event" element={<eventPage />} />
-        <Route path="/event/:eventId" element={<EventPage />} />
-        <Route path="/login" element={<LoginPage />} />
-      </Routes>
-    </Router>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/admin" element={<AdminEventRequests />} />
+      <Route path="/user" element={<UserPanel />} />
+      <Route path="/request-event" element={<RequestEvent />} />
+      <Route path="/create-event" element={<EventPage />} />
+      <Route path="/event/:eventId" element={<EventPage />} />
+      <Route path="/login" element={<LoginPage />} />
+    </Routes>
   );
 }
 

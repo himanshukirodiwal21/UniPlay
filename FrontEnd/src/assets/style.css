@@ -180,7 +180,7 @@ header .container {
 =========================================== */
 .card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Fixed min width for cards */
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Fixed min width for cards */
     gap: 2rem;
     padding: 20px;
     max-width: 1200px;
@@ -745,4 +745,11 @@ form {
 .form-actions {
   grid-column: span 2;
   text-align: center;
+}
+
+
+.form-message {
+  margin-top: 1rem;
+  font-weight: bold;
+  color: green; /* or red for errors */
 }
