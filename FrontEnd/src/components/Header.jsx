@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+<<<<<<< HEAD
 import { User, LogOut, Settings } from "lucide-react";
+=======
+import UniPlayLogo from "../assets/UniPlay.svg";
+>>>>>>> a3f0b1580d75a0e1c010db9a7d8dec5018de3951
 
 function Header() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -34,16 +38,28 @@ function Header() {
   return (
     <header>
       <nav className="container">
-        <Link to="/" className="logo">UniPlay</Link>
+        <Link to="/" className="logo">
+          <img src={UniPlayLogo} alt="UniPlay Logo" className="logo-img" />
+          <span className="logo-text">UniPlay</span>
+        </Link>
 
         <ul className="nav-links">
-          <li><Link to="/">Events</Link></li>
-          <li><Link to="/">Leaderboards</Link></li>
-          <li><Link to="/">News</Link></li>
-          <li><Link to="/about">About Us</Link></li>
+          <li>
+            <Link to="/">Events</Link>
+          </li>
+          <li>
+            <Link to="/">Leaderboards</Link>
+          </li>
+          <li>
+            <Link to="/">News</Link>
+          </li>
+          <li>
+            <Link to="/about">About Us</Link>
+          </li>
         </ul>
 
         <div className="auth-buttons">
+<<<<<<< HEAD
           {currentUser ? (
             <div className="user-profile-dropdown" ref={dropdownRef}>
               <div
@@ -88,6 +104,23 @@ function Header() {
               </Link>
             </>
           )}
+=======
+          {/* Pass state to indicate which form to show */}
+          <Link
+            to="/login"
+            state={{ form: "login" }}
+            className="btn btn-primary"
+          >
+            Login
+          </Link>
+          <Link
+            to="/login"
+            state={{ form: "signup" }}
+            className="btn btn-secondary"
+          >
+            Sign Up
+          </Link>
+>>>>>>> a3f0b1580d75a0e1c010db9a7d8dec5018de3951
         </div>
       </nav>
     </header>

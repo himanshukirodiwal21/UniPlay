@@ -102,9 +102,22 @@ header .container {
 }
 
 .logo {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: var(--primary-color);
+  display: flex;
+  align-items: center;   /* Vertically center */
+  gap: 8px;              /* Space between logo and text */
+  text-decoration: none; /* Remove underline */
+  font-weight: bold;
+  font-size: 1.5rem;
+  color: var(--primary-color);      /* Keep same color as other links */
+}
+
+.logo-img {
+  height: 40px; /* adjust size */
+  width: auto;
+}
+
+.logo-text {
+  line-height: 1;
 }
 
 .nav-links {
