@@ -5,23 +5,23 @@ import Footer from "../components/Footer";
 const HomePage = () => {
   const [events, setEvents] = useState([]);
 
- useEffect(() => {
-  const fetchEvents = async () => {
-    try {
-      const res = await fetch("http://localhost:8000/api/events");
-      if (!res.ok) throw new Error("Failed to fetch events");
-      const data = await res.json();
-      setEvents(data);
-      // localStorage.setItem("uniplay_events", JSON.stringify(data)); // REMOVED
-    } catch (err) {
-      console.error("Error fetching events:", err);
-      // fallback - show empty array
-      setEvents([]);
-    }
-  };
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/v1/events");
+        if (!res.ok) throw new Error("Failed to fetch events");
+        const data = await res.json();
+        setEvents(data);
+        // localStorage.setItem("uniplay_events", JSON.stringify(data)); // REMOVED
+      } catch (err) {
+        console.error("Error fetching events:", err);
+        // fallback - show empty array
+        setEvents([]);
+      }
+    };
 
-  fetchEvents();
-}, []);
+    fetchEvents();
+  }, []);
 
   return (
     <>
@@ -52,76 +52,30 @@ const HomePage = () => {
         <section id="events" className="container section">
           <h2 className="section-title">🔥 Upcoming Events</h2>
           <div className="card-grid">
-            {/* Dynamic events from backend/localStorage */}
-            {events.length > 0 &&
-              events.map((event) => (
-                <div key={event._id} className="card">
-                  <img src={event.image} alt={event.name} />
-                  <div className="card-content">
-                    <h3>{event.name}</h3>
-                    <p>
-                      <i className="fa-regular fa-calendar-alt"></i> Starts:{" "}
-                      {event.date}
-                    </p>
-                    <p>
-                      <i className="fa-solid fa-location-dot"></i>{" "}
-                      {event.location}
-                    </p>
-                    <a
-                      href={`/event/${event._id}`}
-                      className="btn btn-secondary"
-                    >
-                      View Details
-                    </a>
+            {events.length === 0 ? (
+              <p style={{ fontSize: "1.2rem", color: "#555", textAlign: "center", width: "100%" }}>
+                No upcoming events approved by admin yet. Check back later!
+              </p>
+            ) : (
+              events
+                .filter((event) => event.status === "approved") // only show approved events
+                .map((event) => (
+                  <div key={event._id} className="card">
+                    <img src={event.image || "/default-event.jpg"} alt={event.name} />
+                    <div className="card-content">
+                      <h3>{event.name}</h3>
+                      <p>
+                        <i className="fa-regular fa-calendar-alt"></i> Starts: {event.date}
+                      </p>
+                      <p>
+                        <i className="fa-solid fa-location-dot"></i> {event.location}
+                      </p>
+                      <a href={`/event/${event._id}`} className="btn btn-secondary">
+                        View Details
+                      </a>
+                    </div>
                   </div>
-                </div>
-              ))}
-
-            {/* Fallback hardcoded events */}
-            {events.length === 0 && (
-              <>
-                <div className="card">
-                  <img
-                    src="https://www.shutterstock.com/image-vector/india-vs-australia-cricket-championship-600nw-2218786575.jpg"
-                    alt="Cricket Match"
-                  />
-                  <div className="card-content">
-                    <h3>Inter-Departmental Cricket Championship</h3>
-                    <p>
-                      <i className="fa-regular fa-calendar-alt"></i> Starts:
-                      25th Oct 2025
-                    </p>
-                    <p>
-                      <i className="fa-solid fa-location-dot"></i> University
-                      Main Ground, Kota
-                    </p>
-                    <a href="#" className="btn btn-secondary">
-                      View Details
-                    </a>
-                  </div>
-                </div>
-
-                <div className="card">
-                  <img
-                    src="https://i.pinimg.com/originals/2d/d1/f0/2dd1f0d601311527c878a67b6d74226b.gif"
-                    alt="E-Sports Tournament"
-                  />
-                  <div className="card-content">
-                    <h3>University Valorant Invitational</h3>
-                    <p>
-                      <i className="fa-regular fa-calendar-alt"></i> Qualifiers:
-                      1st Nov 2025
-                    </p>
-                    <p>
-                      <i className="fa-solid fa-server"></i> Online / Discord
-                      Server
-                    </p>
-                    <a href="#" className="btn btn-primary">
-                      Register Now
-                    </a>
-                  </div>
-                </div>
-              </>
+                ))
             )}
           </div>
           <br />
@@ -129,6 +83,8 @@ const HomePage = () => {
             Request Event
           </a>
         </section>
+
+
 
         {/* Sports Section */}
         <section id="sports" className="container section">
@@ -144,19 +100,18 @@ const HomePage = () => {
             ].map((sport) => (
               <div key={sport} className="sport-item">
                 <i
-                  className={`fa-solid ${
-                    sport === "Cricket"
+                  className={`fa-solid ${sport === "Cricket"
                       ? "fa-baseball-bat-ball"
                       : sport === "Football"
-                      ? "fa-futbol"
-                      : sport === "Basketball"
-                      ? "fa-basketball"
-                      : sport === "E-Sports"
-                      ? "fa-gamepad"
-                      : sport === "Volleyball"
-                      ? "fa-volleyball"
-                      : ""
-                  }`}
+                        ? "fa-futbol"
+                        : sport === "Basketball"
+                          ? "fa-basketball"
+                          : sport === "E-Sports"
+                            ? "fa-gamepad"
+                            : sport === "Volleyball"
+                              ? "fa-volleyball"
+                              : ""
+                    }`}
                 ></i>{" "}
                 {sport}
               </div>

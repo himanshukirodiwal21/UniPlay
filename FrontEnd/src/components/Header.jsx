@@ -108,7 +108,7 @@ function Header() {
                   ) : (
                     <>
                       <Link
-                        to="/profile"
+                        to="/user"
                         className="dropdown-item"
                         onClick={() => setShowDropdown(false)}
                       >

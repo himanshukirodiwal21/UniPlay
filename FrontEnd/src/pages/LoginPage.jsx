@@ -455,11 +455,13 @@
 
 
 
-import { useState } from "react";
+// src/pages/LoginPage.jsx (ya AuthPages.jsx)
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, UserCircle, User, CheckCircle, Eye, EyeOff, Shield } from "lucide-react";
 
 export default function AuthPages() {
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState("login");
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
@@ -474,7 +476,19 @@ export default function AuthPages() {
   const [adminLoginData, setAdminLoginData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const navigate = useNavigate(); 
+
+  // Check if user already logged in
+  useEffect(() => {
+    const currentUser = localStorage.getItem('currentUser');
+    if (currentUser) {
+      const user = JSON.parse(currentUser);
+      if (user.role === 'admin') {
+        navigate('/', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -572,7 +586,7 @@ export default function AuthPages() {
       }
     } catch (err) {
       console.error(err);
-      alert("Something went wrong");
+      alert("Invalid Detail");
     } finally {
       setIsSubmitting(false);
     }

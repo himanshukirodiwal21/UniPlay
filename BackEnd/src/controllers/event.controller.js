@@ -43,13 +43,15 @@ const createEvent = async (req, res) => {
 
 const getEvents = async (req, res) => {
   try {
-    const events = await Event.find().sort({ date: 1 });
+    // Only approved events
+    const events = await Event.find({ status: "approved" }).sort({ date: 1 });
     return res.status(200).json(events);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server Error" });
   }
 };
+
 
 const getEventById = async (req, res) => {
   try {
@@ -148,6 +150,9 @@ const deleteEvent = async (req, res) => {
     return res.status(500).json({ message: "Server Error" });
   }
 };
+
+
+
 
 export {
   createEvent,
