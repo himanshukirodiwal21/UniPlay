@@ -29,7 +29,7 @@ function Header() {
     localStorage.removeItem("currentUser");
     setCurrentUser(null);
     setShowDropdown(false);
-     navigate("/", { replace: true });
+    navigate("/", { replace: true });
   };
 
   const isAdmin = currentUser?.role === "admin";
@@ -43,10 +43,18 @@ function Header() {
         </Link>
 
         <ul className="nav-links">
-          <li><Link to="/">Events</Link></li>
-          <li><Link to="/">Leaderboards</Link></li>
-          <li><Link to="/">News</Link></li>
-          <li><Link to="/about">About Us</Link></li>
+          <li>
+            <Link to="/">Events</Link>
+          </li>
+          <li>
+            <Link to="/">Leaderboards</Link>
+          </li>
+          <li>
+            <Link to="/">News</Link>
+          </li>
+          <li>
+            <Link to="/about">About Us</Link>
+          </li>
         </ul>
 
         <div className="auth-buttons">
@@ -56,9 +64,14 @@ function Header() {
                 className="user-icon"
                 onClick={() => setShowDropdown(!showDropdown)}
                 title={currentUser.fullName}
-                style={isAdmin ? {
-                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-                } : {}}
+                style={
+                  isAdmin
+                    ? {
+                        background:
+                          "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      }
+                    : {}
+                }
               >
                 {currentUser.fullName.charAt(0).toUpperCase()}
               </div>
@@ -69,22 +82,27 @@ function Header() {
                     <div className="dropdown-user-name">
                       {currentUser.fullName}
                       {isAdmin && (
-                        <span style={{
-                          marginLeft: "8px",
-                          fontSize: "12px",
-                          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                          color: "#fff",
-                          padding: "2px 8px",
-                          borderRadius: "4px",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px"
-                        }}>
+                        <span
+                          style={{
+                            marginLeft: "8px",
+                            fontSize: "12px",
+                            background:
+                              "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            color: "#fff",
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
                           <Shield size={12} /> Admin
                         </span>
                       )}
                     </div>
-                    <div className="dropdown-user-email">{currentUser.email}</div>
+                    <div className="dropdown-user-email">
+                      {currentUser.email}
+                    </div>
                   </div>
 
                   {isAdmin ? (
