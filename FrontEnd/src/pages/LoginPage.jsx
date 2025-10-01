@@ -456,15 +456,7 @@
 
 
 import { useState } from "react";
-import {
-  Mail,
-  Lock,
-  UserCircle,
-  User as UserIcon,
-  CheckCircle,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { Mail, Lock, UserCircle, User, CheckCircle, Eye, EyeOff, Shield } from "lucide-react";
 
 export default function AuthPages() {
   const [currentPage, setCurrentPage] = useState("login");
@@ -478,11 +470,10 @@ export default function AuthPages() {
     otp: "",
   });
   const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [adminLoginData, setAdminLoginData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loggedInUser, setLoggedInUser] = useState(null);
 
-  // Handlers
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -492,6 +483,12 @@ export default function AuthPages() {
   const handleLoginChange = (e) => {
     const { name, value } = e.target;
     setLoginData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const handleAdminLoginChange = (e) => {
+    const { name, value } = e.target;
+    setAdminLoginData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -521,76 +518,95 @@ export default function AuthPages() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // const handleLogin = async () => {
-  //   if (!validateLogin()) return;
-  //   setIsSubmitting(true);
-  //   try {
-  //     const res = await fetch("http://localhost:8000/api/v1/users/login", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify(loginData),
-  //       credentials: "include",
-  //     });
-  //     const data = await res.json();
-  //     if (res.ok) {
-  //       alert("Login successful: " + loginData.email);
-  //       setLoginData({ email: "", password: "" });
-  //     } else {
-  //       alert(data?.message || "Login failed");
-  //     }
-  //   } catch (err) {
-  //     console.error(err);
-  //     alert("Something went wrong");
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
-
-
+  const validateAdminLogin = () => {
+    const newErrors = {};
+    if (!adminLoginData.email.trim()) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(adminLoginData.email))
+      newErrors.email = "Email is invalid";
+    if (!adminLoginData.password) newErrors.password = "Password is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleLogin = async () => {
-  if (!validateLogin()) return;
-  setIsSubmitting(true);
-  try {
-    const res = await fetch("http://localhost:8000/api/v1/users/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(loginData),
-      credentials: "include",
-    });
-    const data = await res.json();
-    
-    if (res.ok) {
-  // Store user in localStorage for persistence
-  localStorage.setItem('currentUser', JSON.stringify(data.data.user));
-  
-  // Redirect to home page
-  window.location.href = '/';
-} else if (res.status === 403 && data.needsVerification) {
-      setFormData({
-        fullName: data.user.fullName,
-        username: data.user.username,
-        email: data.user.email,
-        password: loginData.password,
-        otp: ""
+    if (!validateLogin()) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("http://localhost:8000/api/v1/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(loginData),
+        credentials: "include",
       });
-      setLoginData({ email: "", password: "" });
-      setErrors({});
-      setCurrentPage("signup");
-      setStep(2);
-      alert(data.message);
-    } else {
-      alert(data?.message || "Login failed");
+      const data = await res.json();
+      
+      if (res.ok) {
+        const userData = {
+          id: data.data.user._id || data.data.user.id,
+          fullName: data.data.user.fullName,
+          username: data.data.user.username,
+          email: data.data.user.email,
+          role: "user"
+        };
+        localStorage.setItem('currentUser', JSON.stringify(userData));
+        alert("Login successful: " + loginData.email);
+        window.location.href = '/';
+      } else if (res.status === 403 && data.needsVerification) {
+        setFormData({
+          fullName: data.user.fullName,
+          username: data.user.username,
+          email: data.user.email,
+          password: loginData.password,
+          otp: ""
+        });
+        setLoginData({ email: "", password: "" });
+        setErrors({});
+        setCurrentPage("signup");
+        setStep(2);
+        alert(data.message);
+      } else {
+        alert(data?.message || "Login failed");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong");
+    } finally {
+      setIsSubmitting(false);
     }
-  } catch (err) {
-    console.error(err);
-    alert("Something went wrong");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
-
+  const handleAdminLogin = async () => {
+    if (!validateAdminLogin()) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("http://localhost:8000/api/v1/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(adminLoginData),
+        credentials: "include",
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        const adminData = {
+          id: data.data.admin._id || data.data.admin.id,
+          fullName: data.data.admin.fullName,
+          email: data.data.admin.email,
+          role: "admin"
+        };
+        localStorage.setItem('currentUser', JSON.stringify(adminData));
+        alert("Admin login successful: " + adminLoginData.email);
+        window.location.href = '/admin';
+      } else {
+        alert(data?.message || "Admin login failed");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   
   const handleSendOTP = async () => {
     if (!validateStep1()) return;
@@ -609,13 +625,11 @@ export default function AuthPages() {
       });
       const data = await res.json();
       
-      // Handle both success cases: new user (201) and existing unverified user (200)
       if (res.ok || res.status === 200) {
         setStep(2);
-        setFormData(prev => ({ ...prev, otp: "" })); // Clear OTP field
+        setFormData(prev => ({ ...prev, otp: "" }));
         alert(data?.message || "OTP sent to " + formData.email);
       } else if (res.status === 409) {
-        // User already verified
         alert(data?.message || "User already exists. Please login.");
       } else {
         alert(data?.message || "Registration failed");
@@ -639,15 +653,12 @@ export default function AuthPages() {
     }
     setIsSubmitting(true);
     try {
-      const res = await fetch(
-        "http://localhost:8000/api/v1/users/verifyemail",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: formData.otp }),
-          credentials: "include",
-        }
-      );
+      const res = await fetch("http://localhost:8000/api/v1/users/verifyemail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: formData.otp }),
+        credentials: "include",
+      });
       const data = await res.json();
       if (res.ok) {
         setStep(3);
@@ -678,7 +689,7 @@ export default function AuthPages() {
       });
       const data = await res.json();
       if (res.ok) {
-        setFormData(prev => ({ ...prev, otp: "" })); // Clear OTP field
+        setFormData(prev => ({ ...prev, otp: "" }));
         alert(data?.message || "OTP resent to " + formData.email);
       } else {
         alert(data?.message || "Failed to resend OTP");
@@ -705,7 +716,18 @@ export default function AuthPages() {
     setFormData({ fullName: "", username: "", email: "", password: "", otp: "" });
   };
 
-  // Internal CSS styles
+  const switchToAdminLogin = () => {
+    setCurrentPage("adminLogin");
+    setErrors({});
+    setAdminLoginData({ email: "", password: "" });
+  };
+
+  const switchBackToUserLogin = () => {
+    setCurrentPage("login");
+    setErrors({});
+    setAdminLoginData({ email: "", password: "" });
+  };
+
   const styles = {
     container: {
       minHeight: "100vh",
@@ -780,6 +802,32 @@ export default function AuthPages() {
       marginTop: "12px",
       opacity: disabled ? 0.6 : 1,
     }),
+    adminButton: {
+      width: "100%",
+      padding: "12px",
+      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      color: "#fff",
+      fontWeight: "600",
+      borderRadius: "8px",
+      border: "none",
+      cursor: "pointer",
+      marginTop: "16px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "8px",
+    },
+    backButton: {
+      width: "100%",
+      padding: "12px",
+      background: "transparent",
+      color: "#4f46e5",
+      fontWeight: "600",
+      borderRadius: "8px",
+      border: "2px solid #4f46e5",
+      cursor: "pointer",
+      marginTop: "12px",
+    },
     error: { color: "#ef4444", fontSize: "0.75rem", marginTop: "4px" },
     stepContainer: { display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "24px" },
     stepCircle: (active) => ({
@@ -807,98 +855,96 @@ export default function AuthPages() {
       marginBottom: "16px",
       border: "1px solid #bbf7d0",
     },
+    divider: {
+      display: "flex",
+      alignItems: "center",
+      margin: "20px 0",
+      color: "#9ca3af",
+      fontSize: "14px",
+    },
+    dividerLine: {
+      flex: 1,
+      height: "1px",
+      background: "#e5e7eb",
+    },
   };
 
-  const handleLogout = () => {
-  setLoggedInUser(null);
-  setCurrentPage("login");
-};
-
-
-  // const handleKeyPress = (e, action) => {
-  //   if (e.key === "Enter") action();
-  // };
-
   const handleKeyPress = (e, action) => {
-  if (e.key === "Enter") action();
-};
-
-// If user is logged in, show home page
-// if (loggedInUser) {
-//   return (
-//     <div style={styles.container}>
-//       <div style={{ ...styles.card, maxWidth: "800px", padding: "40px" }}>
-//         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" }}>
-//           <h1 style={{ margin: 0, color: "#1f2937" }}>Welcome, {loggedInUser.fullName}!</h1>
-//           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-//             <div style={{
-//               width: "48px",
-//               height: "48px",
-//               borderRadius: "50%",
-//               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-//               color: "#fff",
-//               display: "flex",
-//               alignItems: "center",
-//               justifyContent: "center",
-//               fontSize: "20px",
-//               fontWeight: "600"
-//             }}>
-//               {loggedInUser.fullName.charAt(0).toUpperCase()}
-//             </div>
-//             <button onClick={handleLogout} style={{
-//               padding: "8px 16px",
-//               background: "#ef4444",
-//               color: "#fff",
-//               border: "none",
-//               borderRadius: "8px",
-//               cursor: "pointer",
-//               fontWeight: "500"
-//             }}>
-//               Logout
-//             </button>
-//           </div>
-//         </div>
-
-//         <div style={{
-//           background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-//           padding: "32px",
-//           borderRadius: "16px",
-//           color: "#fff",
-//           marginBottom: "24px"
-//         }}>
-//           <h2 style={{ margin: "0 0 16px 0" }}>Your Profile</h2>
-//           <div style={{ display: "grid", gap: "12px" }}>
-//             <p style={{ margin: 0 }}><strong>Name:</strong> {loggedInUser.fullName}</p>
-//             <p style={{ margin: 0 }}><strong>Username:</strong> {loggedInUser.username}</p>
-//             <p style={{ margin: 0 }}><strong>Email:</strong> {loggedInUser.email}</p>
-//           </div>
-//         </div>
-
-//         <div style={{ textAlign: "center", color: "#6b7280" }}>
-//           <p>You are successfully logged in!</p>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
-
-
-
+    if (e.key === "Enter") action();
+  };
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        {/* Tabs */}
-        <div style={styles.tabContainer}>
-          <button style={styles.tab(currentPage === "login")} onClick={() => setCurrentPage("login")}>Login</button>
-          <button style={styles.tab(currentPage === "signup")} onClick={switchToSignup}>Sign Up</button>
-        </div>
+        {currentPage !== "adminLogin" && (
+          <div style={styles.tabContainer}>
+            <button style={styles.tab(currentPage === "login")} onClick={switchToLogin}>Login</button>
+            <button style={styles.tab(currentPage === "signup")} onClick={switchToSignup}>Sign Up</button>
+          </div>
+        )}
 
-        {/* LOGIN */}
+        {currentPage === "adminLogin" && (
+          <div>
+            <div style={{ textAlign: "center", marginBottom: "24px" }}>
+              <div style={{
+                width: "64px",
+                height: "64px",
+                margin: "0 auto 16px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}>
+                <Shield size={32} color="#fff" />
+              </div>
+              <h2 style={{ color: "#1f2937", margin: "0 0 8px 0" }}>Admin Login</h2>
+              <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Access admin dashboard</p>
+            </div>
+
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Admin Email</label>
+              <Mail style={styles.icon} />
+              <input
+                type="email"
+                name="email"
+                value={adminLoginData.email}
+                onChange={handleAdminLoginChange}
+                onKeyPress={(e) => handleKeyPress(e, handleAdminLogin)}
+                style={styles.input(true)}
+                placeholder="Enter admin email"
+              />
+              {errors.email && <div style={styles.error}>{errors.email}</div>}
+            </div>
+
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Admin Password</label>
+              <Lock style={styles.icon} />
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={adminLoginData.password}
+                onChange={handleAdminLoginChange}
+                onKeyPress={(e) => handleKeyPress(e, handleAdminLogin)}
+                style={styles.input(true)}
+                placeholder="Enter admin password"
+              />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} style={styles.passwordToggle}>
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+              {errors.password && <div style={styles.error}>{errors.password}</div>}
+            </div>
+
+            <button onClick={handleAdminLogin} disabled={isSubmitting} style={styles.button("#764ba2", isSubmitting)}>
+              {isSubmitting ? "Logging in..." : "Login as Admin"}
+            </button>
+
+            <button onClick={switchBackToUserLogin} style={styles.backButton}>
+              ← Back to User Login
+            </button>
+          </div>
+        )}
+
         {currentPage === "login" && (
           <div>
             <h2 style={{ ...styles.centerText, marginBottom: "16px", color: "#1f2937" }}>Welcome Back</h2>
@@ -938,13 +984,22 @@ export default function AuthPages() {
             <button onClick={handleLogin} disabled={isSubmitting} style={styles.button("#4f46e5", isSubmitting)}>
               {isSubmitting ? "Logging in..." : "Login"}
             </button>
+
+            <div style={styles.divider}>
+              <div style={styles.dividerLine}></div>
+              <span style={{ padding: "0 12px" }}>or</span>
+              <div style={styles.dividerLine}></div>
+            </div>
+
+            <button onClick={switchToAdminLogin} style={styles.adminButton}>
+              <Shield size={20} />
+              Login as Admin
+            </button>
           </div>
         )}
 
-        {/* SIGNUP */}
         {currentPage === "signup" && (
           <div>
-            {/* Step indicators */}
             <div style={styles.stepContainer}>
               <div style={styles.stepCircle(step >= 1)}>1</div>
               <div style={styles.stepLine(step >= 2)}></div>
@@ -953,7 +1008,6 @@ export default function AuthPages() {
               <div style={styles.stepCircle(step >= 3)}>3</div>
             </div>
 
-            {/* Step 1 */}
             {step === 1 && (
               <>
                 <div style={styles.inputGroup}>
@@ -972,7 +1026,7 @@ export default function AuthPages() {
                 </div>
                 <div style={styles.inputGroup}>
                   <label style={styles.label}>Username</label>
-                  <UserIcon style={styles.icon} />
+                  <User style={styles.icon} />
                   <input
                     type="text"
                     name="username"
@@ -1022,7 +1076,6 @@ export default function AuthPages() {
               </>
             )}
 
-            {/* Step 2 */}
             {step === 2 && (
               <>
                 <div style={{ ...styles.centerText, marginBottom: "16px" }}>
@@ -1054,7 +1107,6 @@ export default function AuthPages() {
               </>
             )}
 
-            {/* Step 3 */}
             {step === 3 && (
               <div style={styles.centerText}>
                 <CheckCircle size={64} style={{ color: "#16a34a", marginBottom: "16px", display: "inline-block" }} />
@@ -1073,5 +1125,4 @@ export default function AuthPages() {
     </div>
   );
 }
-
 

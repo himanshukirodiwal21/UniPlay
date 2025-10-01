@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { User, LogOut, Settings } from "lucide-react";
+import { User, LogOut, Settings, Shield } from "lucide-react";
 import UniPlayLogo from "../assets/UniPlay.svg";
 
 function Header() {
@@ -9,7 +9,7 @@ function Header() {
   const dropdownRef = useRef(null);
 
   useEffect(() => {
-    // Fetch current user from backend/localStorage
+    // Fetch current user from localStorage
     const user = localStorage.getItem("currentUser");
     if (user) setCurrentUser(JSON.parse(user));
   }, []);
@@ -30,6 +30,8 @@ function Header() {
     setShowDropdown(false);
     window.location.href = "/login";
   };
+
+  const isAdmin = currentUser?.role === "admin";
 
   return (
     <header>
@@ -53,6 +55,9 @@ function Header() {
                 className="user-icon"
                 onClick={() => setShowDropdown(!showDropdown)}
                 title={currentUser.fullName}
+                style={isAdmin ? {
+                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                } : {}}
               >
                 {currentUser.fullName.charAt(0).toUpperCase()}
               </div>
@@ -60,25 +65,64 @@ function Header() {
               {showDropdown && (
                 <div className="dropdown-menu">
                   <div className="dropdown-header">
-                    <div className="dropdown-user-name">{currentUser.fullName}</div>
+                    <div className="dropdown-user-name">
+                      {currentUser.fullName}
+                      {isAdmin && (
+                        <span style={{
+                          marginLeft: "8px",
+                          fontSize: "12px",
+                          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                          color: "#fff",
+                          padding: "2px 8px",
+                          borderRadius: "4px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}>
+                          <Shield size={12} /> Admin
+                        </span>
+                      )}
+                    </div>
                     <div className="dropdown-user-email">{currentUser.email}</div>
                   </div>
 
-                  <Link
-                    to="/profile"
-                    className="dropdown-item"
-                    onClick={() => setShowDropdown(false)}
-                  >
-                    <User size={18} /> <span>My Profile</span>
-                  </Link>
+                  {isAdmin ? (
+                    <>
+                      <Link
+                        to="/admin/dashboard"
+                        className="dropdown-item"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <Shield size={18} /> <span>Admin Dashboard</span>
+                      </Link>
 
-                  <Link
-                    to="/settings"
-                    className="dropdown-item"
-                    onClick={() => setShowDropdown(false)}
-                  >
-                    <Settings size={18} /> <span>Settings</span>
-                  </Link>
+                      <Link
+                        to="/admin/settings"
+                        className="dropdown-item"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <Settings size={18} /> <span>Admin Settings</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        to="/profile"
+                        className="dropdown-item"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <User size={18} /> <span>My Profile</span>
+                      </Link>
+
+                      <Link
+                        to="/settings"
+                        className="dropdown-item"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <Settings size={18} /> <span>Settings</span>
+                      </Link>
+                    </>
+                  )}
 
                   <button onClick={handleLogout} className="dropdown-item">
                     <LogOut size={18} /> <span>Logout</span>
