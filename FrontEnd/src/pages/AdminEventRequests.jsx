@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import "../assets/AdminEventRequests.css";
 import { useNavigate } from "react-router-dom";
 
 const AdminEventRequests = () => {
