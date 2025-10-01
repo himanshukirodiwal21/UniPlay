@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { User, LogOut, Settings, Shield } from "lucide-react";
 import UniPlayLogo from "../assets/UniPlay.svg";
 
 function Header() {
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -28,7 +29,7 @@ function Header() {
     localStorage.removeItem("currentUser");
     setCurrentUser(null);
     setShowDropdown(false);
-    window.location.href = "/login";
+     navigate("/", { replace: true });
   };
 
   const isAdmin = currentUser?.role === "admin";
@@ -89,7 +90,7 @@ function Header() {
                   {isAdmin ? (
                     <>
                       <Link
-                        to="/admin/dashboard"
+                        to="/admin"
                         className="dropdown-item"
                         onClick={() => setShowDropdown(false)}
                       >

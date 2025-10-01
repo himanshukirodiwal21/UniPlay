@@ -23,7 +23,9 @@ const AdminEventRequests = () => {
           ? "http://localhost:8000/api/v1/requests"
           : `http://localhost:8000/api/v1/requests?status=${filter}`;
 
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        credentials: "include"
+      });
       const data = await response.json();
 
       console.log("Fetched requests:", data);
@@ -52,6 +54,7 @@ const AdminEventRequests = () => {
       const response = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           adminNotes,
           reviewedAt: new Date().toISOString(),
@@ -81,7 +84,10 @@ const AdminEventRequests = () => {
     try {
       const response = await fetch(
         `http://localhost:8000/api/v1/requests/${id}`,
-        { method: "DELETE" }
+        { 
+          method: "DELETE",
+          credentials: "include" 
+         }
       );
 
       if (!response.ok) throw new Error("Failed to delete request");
