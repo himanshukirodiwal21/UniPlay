@@ -6,6 +6,7 @@ import {
   getPendingEvents,
   approveEvent,
   declineEvent,
+  deleteEvent,  // ✅ Import add karo
 } from "../controllers/event.controller.js";
 import { isAdmin } from "../middlewares/isAdmin.middleware.js";
 
@@ -17,8 +18,9 @@ router.get("/events", getEvents);
 router.get("/events/:id", getEventById);
 
 // Admin-only routes
-router.get("/requests", isAdmin, getPendingEvents);
-router.put("/requests/:id/approve", isAdmin, approveEvent);
-router.put("/requests/:id/decline", isAdmin, declineEvent);
+router.get("/requests",  getPendingEvents);
+router.put("/requests/:id/approve",  approveEvent);
+router.put("/requests/:id/decline",  declineEvent);
+router.delete("/requests/:id",  deleteEvent);  // ✅ Ye line add karo
 
 export default router;

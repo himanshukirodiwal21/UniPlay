@@ -41,27 +41,7 @@ const AdminEventRequests = () => {
           ? "http://localhost:8000/api/v1/requests"
           : `http://localhost:8000/api/v1/requests?status=${filter}`;
 
-      console.log("Fetching from:", url);
-      
-      const response = await fetch(url, {
-        method: "GET",
-        credentials: "include", // Important: sends cookies
-      });
-      
-      console.log("Response status:", response.status);
-      
-      if (response.status === 403) {
-        throw new Error("Access denied. Please login as admin.");
-      }
-      
-      if (response.status === 401) {
-        throw new Error("Session expired. Please login again.");
-      }
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
+      const response = await fetch(url);
       const data = await response.json();
       console.log("Raw response data:", data);
 
@@ -137,10 +117,7 @@ const AdminEventRequests = () => {
     try {
       const response = await fetch(
         `http://localhost:8000/api/v1/requests/${id}`,
-        { 
-          method: "DELETE",
-          credentials: "include",
-        }
+        { method: "DELETE" }
       );
 
       if (!response.ok) throw new Error("Failed to delete request");

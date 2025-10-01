@@ -456,6 +456,7 @@
 
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Mail, Lock, UserCircle, User, CheckCircle, Eye, EyeOff, Shield } from "lucide-react";
 
 export default function AuthPages() {
@@ -473,6 +474,7 @@ export default function AuthPages() {
   const [adminLoginData, setAdminLoginData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate(); 
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -550,7 +552,8 @@ export default function AuthPages() {
         };
         localStorage.setItem('currentUser', JSON.stringify(userData));
         alert("Login successful: " + loginData.email);
-        window.location.href = '/';
+        navigate("/", { replace: true });
+        
       } else if (res.status === 403 && data.needsVerification) {
         setFormData({
           fullName: data.user.fullName,
@@ -596,7 +599,7 @@ export default function AuthPages() {
         };
         localStorage.setItem('currentUser', JSON.stringify(adminData));
         alert("Admin login successful: " + adminLoginData.email);
-        window.location.href = '/admin';
+        navigate("/", { replace: true });
       } else {
         alert(data?.message || "Admin login failed");
       }
