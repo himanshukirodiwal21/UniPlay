@@ -2,37 +2,92 @@
 import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { useNavigate } from "react-router-dom";
 
 const AdminEventRequests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filter, setFilter] = useState("all");
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [adminNotes, setAdminNotes] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetchRequests();
-  }, [filter]);
+    // Check if user is admin on mount
+    const currentUser = localStorage.getItem("currentUser");
+    if (!currentUser) {
+      navigate("/login");
+      return;
+    }
+    
+    const user = JSON.parse(currentUser);
+    if (user.role !== "admin") {
+      alert("Access denied. Admin only area.");
+      navigate("/");
+      return;
+    }
 
-  // Fetch requests from backend
+    fetchRequests();
+  }, [filter, navigate]);
+
+  // Fetch requests from backend - NO AUTH NEEDED for this endpoint based on your backend
   const fetchRequests = async () => {
     setLoading(true);
+    setError(null);
     try {
       const url =
         filter === "all"
           ? "http://localhost:8000/api/v1/requests"
           : `http://localhost:8000/api/v1/requests?status=${filter}`;
 
-      const response = await fetch(url);
+      console.log("Fetching from:", url);
+      
+      const response = await fetch(url, {
+        method: "GET",
+        credentials: "include", // Important: sends cookies
+      });
+      
+      console.log("Response status:", response.status);
+      
+      if (response.status === 403) {
+        throw new Error("Access denied. Please login as admin.");
+      }
+      
+      if (response.status === 401) {
+        throw new Error("Session expired. Please login again.");
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log("Raw response data:", data);
 
-      console.log("Fetched requests:", data);
+      // Handle different response structures
+      let requestsArray = [];
+      if (Array.isArray(data)) {
+        requestsArray = data;
+      } else if (data.data && Array.isArray(data.data)) {
+        requestsArray = data.data;
+      } else if (data.requests && Array.isArray(data.requests)) {
+        requestsArray = data.requests;
+      } else {
+        console.warn("Unexpected data structure:", data);
+        requestsArray = [];
+      }
 
-      // Adjust according to your backend response
-      setRequests(Array.isArray(data) ? data : data.data || []);
+      console.log("Processed requests:", requestsArray);
+      setRequests(requestsArray);
     } catch (error) {
       console.error("Error fetching requests:", error);
-      alert("Failed to load event requests");
+      setError(error.message);
+      setRequests([]);
+      
+      if (error.message.includes("login")) {
+        setTimeout(() => navigate("/login"), 2000);
+      }
     } finally {
       setLoading(false);
     }
@@ -52,6 +107,7 @@ const AdminEventRequests = () => {
       const response = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           adminNotes,
           reviewedAt: new Date().toISOString(),
@@ -81,7 +137,10 @@ const AdminEventRequests = () => {
     try {
       const response = await fetch(
         `http://localhost:8000/api/v1/requests/${id}`,
-        { method: "DELETE" }
+        { 
+          method: "DELETE",
+          credentials: "include",
+        }
       );
 
       if (!response.ok) throw new Error("Failed to delete request");
@@ -108,58 +167,76 @@ const AdminEventRequests = () => {
     );
   };
 
-  const RequestCard = ({ request }) => (
-    <div className="event-card">
-      <div className="card-header">
-        <div>
-          <h3>{request.name}</h3>
-          <p className="text-muted">
-            Requested:{" "}
-            {new Date(
-              request.requestedAt || request.createdAt
-            ).toLocaleDateString()}
-          </p>
+  const RequestCard = ({ request }) => {
+    const location = request.location || request.venue || "N/A";
+    const fee = request.registrationFee ?? request.fee ?? 0;
+    const prize = request.winningPrize || request.prize || "N/A";
+    const requestDate = request.requestedAt || request.createdAt;
+
+    return (
+      <div className="event-card">
+        <div className="card-header">
+          <div>
+            <h3>{request.name || "Unnamed Event"}</h3>
+            <p className="text-muted">
+              Requested:{" "}
+              {requestDate
+                ? new Date(requestDate).toLocaleDateString()
+                : "Unknown"}
+            </p>
+          </div>
+          {getStatusBadge(request.status)}
         </div>
-        {getStatusBadge(request.status)}
+
+        <div className="card-body">
+          <div className="event-info-grid">
+            <div className="info-item">
+              <span className="label">📅 Date:</span>
+              <span>
+                {request.date
+                  ? new Date(request.date).toLocaleDateString()
+                  : "N/A"}
+              </span>
+            </div>
+            <div className="info-item">
+              <span className="label">📍 Venue:</span>
+              <span>{location}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">💰 Fee:</span>
+              <span>₹{fee}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">🏆 Prize:</span>
+              <span>{prize}</span>
+            </div>
+          </div>
+
+          {request.description && (
+            <div className="description-preview">
+              <strong>Description:</strong>
+              <p>{request.description.substring(0, 100)}...</p>
+            </div>
+          )}
+
+          <button
+            onClick={() => setSelectedRequest(request)}
+            className="btn btn-primary btn-block"
+          >
+            View Details & Take Action
+          </button>
+        </div>
       </div>
-
-      <div className="card-body">
-        <div className="event-info-grid">
-          <div className="info-item">
-            <span className="label">📅 Date:</span>
-            <span>{new Date(request.date).toLocaleDateString()}</span>
-          </div>
-          <div className="info-item">
-            <span className="label">📍 Venue:</span>
-            <span>{request.location || request.venue}</span>
-          </div>
-          <div className="info-item">
-            <span className="label">💰 Fee:</span>
-            <span>₹{request.registrationFee || request.fee}</span>
-          </div>
-          <div className="info-item">
-            <span className="label">🏆 Prize:</span>
-            <span>{request.winningPrize || request.prize || "N/A"}</span>
-          </div>
-        </div>
-
-        <div className="description-preview">
-          <strong>Description:</strong>
-          <p>{request.description?.substring(0, 100)}...</p>
-        </div>
-
-        <button
-          onClick={() => setSelectedRequest(request)}
-          className="btn btn-primary btn-block"
-        >
-          View Details & Take Action
-        </button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const DetailModal = () => {
     if (!selectedRequest) return null;
+
+    const location = selectedRequest.location || selectedRequest.venue || "N/A";
+    const fee = selectedRequest.registrationFee ?? selectedRequest.fee ?? 0;
+    const prize = selectedRequest.winningPrize || selectedRequest.prize || "N/A";
+    const image = selectedRequest.image || selectedRequest.thumbnail;
 
     return (
       <div className="modal-overlay" onClick={() => setSelectedRequest(null)}>
@@ -184,51 +261,51 @@ const AdminEventRequests = () => {
               <div className="detail-item">
                 <span className="label">📅 Date:</span>
                 <span>
-                  {new Date(selectedRequest.date).toLocaleDateString()}
+                  {selectedRequest.date
+                    ? new Date(selectedRequest.date).toLocaleDateString()
+                    : "N/A"}
                 </span>
               </div>
 
               <div className="detail-item">
                 <span className="label">📍 Location:</span>
-                <span>{selectedRequest.location || selectedRequest.venue}</span>
+                <span>{location}</span>
               </div>
 
               <div className="detail-item">
                 <span className="label">🧑‍🤝‍🧑 Eligibility:</span>
-                <span>{selectedRequest.eligibility}</span>
+                <span>{selectedRequest.eligibility || "N/A"}</span>
               </div>
 
               <div className="detail-item">
                 <span className="label">💰 Registration Fee:</span>
-                <span>
-                  ₹{selectedRequest.registrationFee || selectedRequest.fee}
-                </span>
+                <span>₹{fee}</span>
               </div>
 
               <div className="detail-item">
                 <span className="label">🏆 Winning Prize:</span>
-                <span>
-                  {selectedRequest.winningPrize ||
-                    selectedRequest.prize ||
-                    "N/A"}
-                </span>
+                <span>{prize}</span>
               </div>
 
               <div className="detail-item full-width">
                 <span className="label">📝 Description:</span>
-                <p>{selectedRequest.description}</p>
+                <p>{selectedRequest.description || "No description provided"}</p>
               </div>
 
-              {selectedRequest.image && (
+              {image && (
                 <div className="detail-item full-width">
                   <span className="label">🖼️ Thumbnail:</span>
                   <img
-                    src={selectedRequest.image || selectedRequest.thumbnail}
+                    src={image}
                     alt={selectedRequest.name}
                     style={{
                       maxWidth: "100%",
                       borderRadius: "8px",
                       marginTop: "10px",
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      console.error("Failed to load image:", image);
                     }}
                   />
                 </div>
@@ -306,7 +383,7 @@ const AdminEventRequests = () => {
             onClick={() => setFilter("all")}
             className={`filter-btn ${filter === "all" ? "active" : ""}`}
           >
-            All Requests
+            All Requests ({requests.length})
           </button>
           <button
             onClick={() => setFilter("pending")}
@@ -332,14 +409,22 @@ const AdminEventRequests = () => {
           <div className="loading-state">
             <p>Loading requests...</p>
           </div>
+        ) : error ? (
+          <div className="error-state">
+            <p>❌ {error}</p>
+            <button onClick={fetchRequests} className="btn btn-primary">
+              Retry
+            </button>
+          </div>
         ) : requests.length === 0 ? (
           <div className="empty-state">
             <p>📭 No event requests found</p>
+            <small>Requests will appear here once users submit them</small>
           </div>
         ) : (
           <div className="events-grid">
             {requests.map((request) => (
-              <RequestCard key={request._id} request={request} />
+              <RequestCard key={request._id || request.id} request={request} />
             ))}
           </div>
         )}

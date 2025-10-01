@@ -28,7 +28,7 @@ function Header() {
     localStorage.removeItem("currentUser");
     setCurrentUser(null);
     setShowDropdown(false);
-    window.location.href = "/login";
+    window.location.href = "/";
   };
 
   const isAdmin = currentUser?.role === "admin";
@@ -89,7 +89,7 @@ function Header() {
                   {isAdmin ? (
                     <>
                       <Link
-                        to="/admin/dashboard"
+                        to="/admin"
                         className="dropdown-item"
                         onClick={() => setShowDropdown(false)}
                       >
