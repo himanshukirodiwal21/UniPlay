@@ -24,71 +24,76 @@ const RequestEvent = () => {
   };
 
   const [message, setMessage] = useState("");
-  
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setMessage("");
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
 
-  try {
-    // Optional: validate thumbnail URL
-    if (formData.thumbnail && !/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/i.test(formData.thumbnail)) {
-      alert("Please enter a valid image URL for the thumbnail.");
+    try {
+      // Optional: validate thumbnail URL
+      if (formData.thumbnail) {
+        try {
+          new URL(formData.thumbnail); // sirf valid URL check karega
+        } catch (err) {
+          alert("Please enter a valid URL for the thumbnail.");
+          setLoading(false);
+          return;
+        }
+      }
+
+
+      // Send data to backend
+      const response = await fetch("http://localhost:8000/api/v1/requestEvent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          date: formData.date,
+          location: formData.venue,
+          eligibility: formData.eligibility,
+          image: formData.thumbnail,
+          registrationFee: Number(formData.fee) || 0,
+          winningPrize: Number(formData.prize) || 0,
+          description: formData.description,
+          status: "pending", // default status
+          requestedAt: new Date().toISOString(), // timestamp
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) throw new Error(result.message || "Failed to submit event request");
+
+      // Show success message
+      setMessage("✅ Your event request has been submitted successfully! Redirecting to Home...");
+
+      // Reset form
+      setFormData({
+        name: "",
+        date: "",
+        venue: "",
+        eligibility: "",
+        thumbnail: "",
+        prize: "",
+        fee: "",
+        description: "",
+      });
+
+      // Redirect to home page after 2 seconds
+      setTimeout(() => {
+        navigate("/");
+      }, 2000);
+
+    } catch (error) {
+      console.error("Error submitting event request:", error);
+      setMessage(`❌ Error: ${error.message}`);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Send data to backend
-    const response = await fetch("http://localhost:8000/api/v1/requestEvent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: formData.name,
-        date: formData.date,
-        location: formData.venue,
-        eligibility: formData.eligibility,
-        image: formData.thumbnail,
-        registrationFee: Number(formData.fee) || 0,
-        winningPrize: Number(formData.prize) || 0,
-        description: formData.description,
-        status: "pending", // default status
-        requestedAt: new Date().toISOString(), // timestamp
-      }),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) throw new Error(result.message || "Failed to submit event request");
-
-    // Show success message
-    setMessage("✅ Your event request has been submitted successfully! Redirecting to Home...");
-
-    // Reset form
-    setFormData({
-      name: "",
-      date: "",
-      venue: "",
-      eligibility: "",
-      thumbnail: "",
-      prize: "",
-      fee: "",
-      description: "",
-    });
-
-    // Redirect to home page after 2 seconds
-    setTimeout(() => {
-      navigate("/");
-    }, 2000);
-
-  } catch (error) {
-    console.error("Error submitting event request:", error);
-    setMessage(`❌ Error: ${error.message}`);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
 
   return (
@@ -154,13 +159,26 @@ const RequestEvent = () => {
             <div className="form-group">
               <label>🖼️ Thumbnail (Image URL):</label>
               <input
-                type="text"
+                type="url"
                 name="thumbnail"
                 value={formData.thumbnail}
                 onChange={handleChange}
-                placeholder="Paste image link"
+                placeholder="Paste direct image link (https://example.com/image.jpg)"
+                required
               />
+              {formData.thumbnail && (
+                <img
+                  src={formData.thumbnail}
+                  alt="Thumbnail Preview"
+                  style={{ width: "150px", marginTop: "10px", borderRadius: "8px" }}
+                  onError={(e) => {
+                    e.target.src =
+                      "https://via.placeholder.com/150?text=Invalid+Image+URL"; // fallback
+                  }}
+                />
+              )}
             </div>
+
 
             {/* Prize */}
             <div className="form-group">
@@ -201,16 +219,16 @@ const RequestEvent = () => {
             </div>
 
             <div className="form-actions">
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={loading}
-                >
-                  {loading ? "Submitting..." : "Submit Request"}
-                </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={loading}
+              >
+                {loading ? "Submitting..." : "Submit Request"}
+              </button>
 
-                {/* Display success or error message */}
-                {message && <p className="form-message">{message}</p>}
+              {/* Display success or error message */}
+              {message && <p className="form-message">{message}</p>}
             </div>
           </form>
         </div>
