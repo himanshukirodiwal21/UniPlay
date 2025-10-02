@@ -207,4 +207,76 @@ const loginUser = asyncHandler(async (req, res) => {
         )
 })
 
-export { registerUser, loginUser, Verifyemail };
+// Send OTP for password reset
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ success: false, message: "Email is required" });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // Generate OTP
+        const resetOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        user.resetPasswordOtp = resetOtp;
+        user.resetPasswordExpiry = Date.now() + 10 * 60 * 1000; // 10 mins
+        await user.save();
+
+        // Send OTP via email
+        await SendVerficationCode(user.email, resetOtp);
+
+        return res.status(200).json({
+            success: true,
+            message: "OTP sent to your email for password reset"
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+// Reset password using OTP
+const resetPassword = async (req, res) => {
+    try {
+        console.log("Reset password request body:", req.body);
+
+        const { email, otp, newPassword } = req.body;
+
+        if (!email || !otp || !newPassword) {
+            return res.status(400).json({ success: false, message: "Email, OTP, and new password are required" });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        if (
+            !user.resetPasswordOtp ||
+            user.resetPasswordOtp !== otp ||
+            user.resetPasswordExpiry < Date.now()
+        ) {
+            return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
+        }
+
+        // Update password
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.resetPasswordOtp = undefined;
+        user.resetPasswordExpiry = undefined;
+        await user.save();
+
+        return res.status(200).json({ success: true, message: "Password reset successful" });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+
+export { registerUser, loginUser, Verifyemail, forgotPassword, resetPassword };

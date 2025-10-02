@@ -4,7 +4,6 @@
 // import { ToastContainer, toast, Bounce } from "react-toastify";
 // import 'react-toastify/dist/ReactToastify.css';
 
-
 // const LoginPage = () => {
 //   const location = useLocation();
 
@@ -99,10 +98,7 @@
 //   }
 // };
 
-
-
 //   return (
-
 
 //     <section className="form-section">
 //       <div className="form-container">
@@ -189,17 +185,6 @@
 // };
 
 // export default LoginPage;
-
-
-
-
-
-
-
-
-
-
-
 
 // import { useState } from 'react';
 // import { Mail, Lock, User, UserCircle, CheckCircle, Eye, EyeOff, Shield } from 'lucide-react';
@@ -441,24 +426,19 @@
 //   );
 // }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // src/pages/LoginPage.jsx (ya AuthPages.jsx)
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, UserCircle, User, CheckCircle, Eye, EyeOff, Shield } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  UserCircle,
+  User,
+  CheckCircle,
+  Eye,
+  EyeOff,
+  Shield,
+} from "lucide-react";
 
 export default function AuthPages() {
   const navigate = useNavigate();
@@ -473,19 +453,22 @@ export default function AuthPages() {
     otp: "",
   });
   const [loginData, setLoginData] = useState({ email: "", password: "" });
-  const [adminLoginData, setAdminLoginData] = useState({ email: "", password: "" });
+  const [adminLoginData, setAdminLoginData] = useState({
+    email: "",
+    password: "",
+  });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Check if user already logged in
   useEffect(() => {
-    const currentUser = localStorage.getItem('currentUser');
+    const currentUser = localStorage.getItem("currentUser");
     if (currentUser) {
       const user = JSON.parse(currentUser);
-      if (user.role === 'admin') {
-        navigate('/', { replace: true });
+      if (user.role === "admin") {
+        navigate("/", { replace: true });
       } else {
-        navigate('/', { replace: true });
+        navigate("/", { replace: true });
       }
     }
   }, [navigate]);
@@ -555,26 +538,25 @@ export default function AuthPages() {
         credentials: "include",
       });
       const data = await res.json();
-      
+
       if (res.ok) {
         const userData = {
           id: data.data.user._id || data.data.user.id,
           fullName: data.data.user.fullName,
           username: data.data.user.username,
           email: data.data.user.email,
-          role: "user"
+          role: "user",
         };
-        localStorage.setItem('currentUser', JSON.stringify(userData));
+        localStorage.setItem("currentUser", JSON.stringify(userData));
         alert("Login successful: " + loginData.email);
         navigate("/", { replace: true });
-        
       } else if (res.status === 403 && data.needsVerification) {
         setFormData({
           fullName: data.user.fullName,
           username: data.user.username,
           email: data.user.email,
           password: loginData.password,
-          otp: ""
+          otp: "",
         });
         setLoginData({ email: "", password: "" });
         setErrors({});
@@ -603,15 +585,15 @@ export default function AuthPages() {
         credentials: "include",
       });
       const data = await res.json();
-      
+
       if (res.ok) {
         const adminData = {
           id: data.data.admin._id || data.data.admin.id,
           fullName: data.data.admin.fullName,
           email: data.data.admin.email,
-          role: "admin"
+          role: "admin",
         };
-        localStorage.setItem('currentUser', JSON.stringify(adminData));
+        localStorage.setItem("currentUser", JSON.stringify(adminData));
         alert("Admin login successful: " + adminLoginData.email);
         navigate("/", { replace: true });
       } else {
@@ -624,7 +606,7 @@ export default function AuthPages() {
       setIsSubmitting(false);
     }
   };
-  
+
   const handleSendOTP = async () => {
     if (!validateStep1()) return;
     setIsSubmitting(true);
@@ -641,10 +623,10 @@ export default function AuthPages() {
         credentials: "include",
       });
       const data = await res.json();
-      
+
       if (res.ok || res.status === 200) {
         setStep(2);
-        setFormData(prev => ({ ...prev, otp: "" }));
+        setFormData((prev) => ({ ...prev, otp: "" }));
         alert(data?.message || "OTP sent to " + formData.email);
       } else if (res.status === 409) {
         alert(data?.message || "User already exists. Please login.");
@@ -670,12 +652,15 @@ export default function AuthPages() {
     }
     setIsSubmitting(true);
     try {
-      const res = await fetch("http://localhost:8000/api/v1/users/verifyemail", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: formData.otp }),
-        credentials: "include",
-      });
+      const res = await fetch(
+        "http://localhost:8000/api/v1/users/verifyemail",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: formData.otp }),
+          credentials: "include",
+        }
+      );
       const data = await res.json();
       if (res.ok) {
         setStep(3);
@@ -706,7 +691,7 @@ export default function AuthPages() {
       });
       const data = await res.json();
       if (res.ok) {
-        setFormData(prev => ({ ...prev, otp: "" }));
+        setFormData((prev) => ({ ...prev, otp: "" }));
         alert(data?.message || "OTP resent to " + formData.email);
       } else {
         alert(data?.message || "Failed to resend OTP");
@@ -725,12 +710,18 @@ export default function AuthPages() {
     setErrors({});
     setLoginData({ email: "", password: "" });
   };
-  
+
   const switchToLogin = () => {
     setCurrentPage("login");
     setStep(1);
     setErrors({});
-    setFormData({ fullName: "", username: "", email: "", password: "", otp: "" });
+    setFormData({
+      fullName: "",
+      username: "",
+      email: "",
+      password: "",
+      otp: "",
+    });
   };
 
   const switchToAdminLogin = () => {
@@ -779,7 +770,13 @@ export default function AuthPages() {
       cursor: "pointer",
     }),
     inputGroup: { marginBottom: "16px", position: "relative" },
-    label: { display: "block", marginBottom: "4px", color: "#374151", fontSize: "14px", fontWeight: "500" },
+    label: {
+      display: "block",
+      marginBottom: "4px",
+      color: "#374151",
+      fontSize: "14px",
+      fontWeight: "500",
+    },
     input: (hasIcon) => ({
       width: "100%",
       padding: hasIcon ? "12px 12px 12px 40px" : "12px",
@@ -810,7 +807,7 @@ export default function AuthPages() {
     button: (bgColor, disabled) => ({
       width: "100%",
       padding: "12px",
-      background: disabled ? "#d1d5db" : (bgColor || "#4f46e5"),
+      background: disabled ? "#d1d5db" : bgColor || "#4f46e5",
       color: "#fff",
       fontWeight: "600",
       borderRadius: "8px",
@@ -846,7 +843,12 @@ export default function AuthPages() {
       marginTop: "12px",
     },
     error: { color: "#ef4444", fontSize: "0.75rem", marginTop: "4px" },
-    stepContainer: { display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "24px" },
+    stepContainer: {
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: "24px",
+    },
     stepCircle: (active) => ({
       width: "32px",
       height: "32px",
@@ -895,28 +897,45 @@ export default function AuthPages() {
       <div style={styles.card}>
         {currentPage !== "adminLogin" && (
           <div style={styles.tabContainer}>
-            <button style={styles.tab(currentPage === "login")} onClick={switchToLogin}>Login</button>
-            <button style={styles.tab(currentPage === "signup")} onClick={switchToSignup}>Sign Up</button>
+            <button
+              style={styles.tab(currentPage === "login")}
+              onClick={switchToLogin}
+            >
+              Login
+            </button>
+            <button
+              style={styles.tab(currentPage === "signup")}
+              onClick={switchToSignup}
+            >
+              Sign Up
+            </button>
           </div>
         )}
 
         {currentPage === "adminLogin" && (
           <div>
             <div style={{ textAlign: "center", marginBottom: "24px" }}>
-              <div style={{
-                width: "64px",
-                height: "64px",
-                margin: "0 auto 16px",
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}>
+              <div
+                style={{
+                  width: "64px",
+                  height: "64px",
+                  margin: "0 auto 16px",
+                  borderRadius: "50%",
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <Shield size={32} color="#fff" />
               </div>
-              <h2 style={{ color: "#1f2937", margin: "0 0 8px 0" }}>Admin Login</h2>
-              <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>Access admin dashboard</p>
+              <h2 style={{ color: "#1f2937", margin: "0 0 8px 0" }}>
+                Admin Login
+              </h2>
+              <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>
+                Access admin dashboard
+              </p>
             </div>
 
             <div style={styles.inputGroup}>
@@ -946,13 +965,23 @@ export default function AuthPages() {
                 style={styles.input(true)}
                 placeholder="Enter admin password"
               />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} style={styles.passwordToggle}>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={styles.passwordToggle}
+              >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
-              {errors.password && <div style={styles.error}>{errors.password}</div>}
+              {errors.password && (
+                <div style={styles.error}>{errors.password}</div>
+              )}
             </div>
 
-            <button onClick={handleAdminLogin} disabled={isSubmitting} style={styles.button("#764ba2", isSubmitting)}>
+            <button
+              onClick={handleAdminLogin}
+              disabled={isSubmitting}
+              style={styles.button("#764ba2", isSubmitting)}
+            >
               {isSubmitting ? "Logging in..." : "Login as Admin"}
             </button>
 
@@ -964,7 +993,15 @@ export default function AuthPages() {
 
         {currentPage === "login" && (
           <div>
-            <h2 style={{ ...styles.centerText, marginBottom: "16px", color: "#1f2937" }}>Welcome Back</h2>
+            <h2
+              style={{
+                ...styles.centerText,
+                marginBottom: "16px",
+                color: "#1f2937",
+              }}
+            >
+              Welcome Back
+            </h2>
             <div style={styles.inputGroup}>
               <label style={styles.label}>Email</label>
               <Mail style={styles.icon} />
@@ -992,13 +1029,28 @@ export default function AuthPages() {
                 style={styles.input(true)}
                 placeholder="Enter password"
               />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} style={styles.passwordToggle}>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={styles.passwordToggle}
+              >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
-              {errors.password && <div style={styles.error}>{errors.password}</div>}
+              {errors.password && (
+                <div style={styles.error}>{errors.password}</div>
+              )}
             </div>
+            <p style={{ textAlign: "right", marginTop: "0.5rem" }}>
+              <a href="/forgot-password" className="forgot-password-link">
+                Forgot Password?
+              </a>
+            </p>
 
-            <button onClick={handleLogin} disabled={isSubmitting} style={styles.button("#4f46e5", isSubmitting)}>
+            <button
+              onClick={handleLogin}
+              disabled={isSubmitting}
+              style={styles.button("#4f46e5", isSubmitting)}
+            >
               {isSubmitting ? "Logging in..." : "Login"}
             </button>
 
@@ -1039,7 +1091,9 @@ export default function AuthPages() {
                     style={styles.input(true)}
                     placeholder="Enter full name"
                   />
-                  {errors.fullName && <div style={styles.error}>{errors.fullName}</div>}
+                  {errors.fullName && (
+                    <div style={styles.error}>{errors.fullName}</div>
+                  )}
                 </div>
                 <div style={styles.inputGroup}>
                   <label style={styles.label}>Username</label>
@@ -1053,7 +1107,9 @@ export default function AuthPages() {
                     style={styles.input(true)}
                     placeholder="Choose username"
                   />
-                  {errors.username && <div style={styles.error}>{errors.username}</div>}
+                  {errors.username && (
+                    <div style={styles.error}>{errors.username}</div>
+                  )}
                 </div>
                 <div style={styles.inputGroup}>
                   <label style={styles.label}>Email</label>
@@ -1067,7 +1123,9 @@ export default function AuthPages() {
                     style={styles.input(true)}
                     placeholder="Enter email"
                   />
-                  {errors.email && <div style={styles.error}>{errors.email}</div>}
+                  {errors.email && (
+                    <div style={styles.error}>{errors.email}</div>
+                  )}
                 </div>
                 <div style={styles.inputGroup}>
                   <label style={styles.label}>Password</label>
@@ -1081,13 +1139,23 @@ export default function AuthPages() {
                     style={styles.input(true)}
                     placeholder="Enter password"
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} style={styles.passwordToggle}>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={styles.passwordToggle}
+                  >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
-                  {errors.password && <div style={styles.error}>{errors.password}</div>}
+                  {errors.password && (
+                    <div style={styles.error}>{errors.password}</div>
+                  )}
                 </div>
 
-                <button onClick={handleSendOTP} disabled={isSubmitting} style={styles.button("#4f46e5", isSubmitting)}>
+                <button
+                  onClick={handleSendOTP}
+                  disabled={isSubmitting}
+                  style={styles.button("#4f46e5", isSubmitting)}
+                >
                   {isSubmitting ? "Sending OTP..." : "Send OTP"}
                 </button>
               </>
@@ -1096,7 +1164,9 @@ export default function AuthPages() {
             {step === 2 && (
               <>
                 <div style={{ ...styles.centerText, marginBottom: "16px" }}>
-                  <p style={{ color: "#6b7280", fontSize: "14px" }}>OTP sent to <strong>{formData.email}</strong></p>
+                  <p style={{ color: "#6b7280", fontSize: "14px" }}>
+                    OTP sent to <strong>{formData.email}</strong>
+                  </p>
                 </div>
                 <div style={styles.inputGroup}>
                   <label style={styles.label}>Enter OTP</label>
@@ -1107,18 +1177,42 @@ export default function AuthPages() {
                     onChange={handleChange}
                     maxLength="6"
                     onKeyPress={(e) => handleKeyPress(e, handleVerifyOTP)}
-                    style={{ ...styles.input(false), textAlign: "center", fontSize: "20px", letterSpacing: "8px" }}
+                    style={{
+                      ...styles.input(false),
+                      textAlign: "center",
+                      fontSize: "20px",
+                      letterSpacing: "8px",
+                    }}
                     placeholder="000000"
                   />
                   {errors.otp && <div style={styles.error}>{errors.otp}</div>}
                 </div>
-                <button onClick={handleVerifyOTP} disabled={isSubmitting} style={styles.button("#4f46e5", isSubmitting)}>
+                <button
+                  onClick={handleVerifyOTP}
+                  disabled={isSubmitting}
+                  style={styles.button("#4f46e5", isSubmitting)}
+                >
                   {isSubmitting ? "Verifying..." : "Verify OTP"}
                 </button>
-                <button onClick={handleResendOTP} disabled={isSubmitting} style={{ ...styles.button("transparent", isSubmitting), color: "#4f46e5", marginTop: "8px" }}>
+                <button
+                  onClick={handleResendOTP}
+                  disabled={isSubmitting}
+                  style={{
+                    ...styles.button("transparent", isSubmitting),
+                    color: "#4f46e5",
+                    marginTop: "8px",
+                  }}
+                >
                   {isSubmitting ? "Resending..." : "Resend OTP"}
                 </button>
-                <button onClick={() => setStep(1)} style={{ ...styles.button("transparent"), color: "#374151", marginTop: "8px" }}>
+                <button
+                  onClick={() => setStep(1)}
+                  style={{
+                    ...styles.button("transparent"),
+                    color: "#374151",
+                    marginTop: "8px",
+                  }}
+                >
                   ← Back to edit details
                 </button>
               </>
@@ -1126,14 +1220,34 @@ export default function AuthPages() {
 
             {step === 3 && (
               <div style={styles.centerText}>
-                <CheckCircle size={64} style={{ color: "#16a34a", marginBottom: "16px", display: "inline-block" }} />
-                <h2 style={{ color: "#1f2937", marginBottom: "16px" }}>Account Created!</h2>
+                <CheckCircle
+                  size={64}
+                  style={{
+                    color: "#16a34a",
+                    marginBottom: "16px",
+                    display: "inline-block",
+                  }}
+                />
+                <h2 style={{ color: "#1f2937", marginBottom: "16px" }}>
+                  Account Created!
+                </h2>
                 <div style={styles.successBox}>
-                  <p style={{ margin: "8px 0", color: "#166534" }}><strong>Name:</strong> {formData.fullName}</p>
-                  <p style={{ margin: "8px 0", color: "#166534" }}><strong>Username:</strong> {formData.username}</p>
-                  <p style={{ margin: "8px 0", color: "#166534" }}><strong>Email:</strong> {formData.email}</p>
+                  <p style={{ margin: "8px 0", color: "#166534" }}>
+                    <strong>Name:</strong> {formData.fullName}
+                  </p>
+                  <p style={{ margin: "8px 0", color: "#166534" }}>
+                    <strong>Username:</strong> {formData.username}
+                  </p>
+                  <p style={{ margin: "8px 0", color: "#166534" }}>
+                    <strong>Email:</strong> {formData.email}
+                  </p>
                 </div>
-                <button onClick={switchToLogin} style={styles.button("#4f46e5")}>Go to Login</button>
+                <button
+                  onClick={switchToLogin}
+                  style={styles.button("#4f46e5")}
+                >
+                  Go to Login
+                </button>
               </div>
             )}
           </div>
@@ -1142,4 +1256,3 @@ export default function AuthPages() {
     </div>
   );
 }
-

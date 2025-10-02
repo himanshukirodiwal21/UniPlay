@@ -8,6 +8,8 @@ import LoginPage from "./pages/LoginPage";
 import RequestEvent from "./pages/RequestEvent";
 import AboutPage from "./pages/AboutPage";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 // make sure import matches usage
 
@@ -23,15 +25,17 @@ function App() {
       <Route path="/event/:eventId" element={<EventPage />} />
       <Route path="/login" element={<LoginPage />} />
 
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Protected Admin Route */}
-      <Route 
-        path="/admin" 
+      <Route
+        path="/admin"
         element={
           <ProtectedAdminRoute>
             <AdminEventRequests />
           </ProtectedAdminRoute>
-        } 
+        }
       />
     </Routes>
   );

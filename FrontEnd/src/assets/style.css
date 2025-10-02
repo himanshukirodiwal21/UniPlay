@@ -845,3 +845,273 @@ form {
   font-weight: bold;
   color: green; /* or red for errors */
 }
+
+/* ===========================================
+   FORGOT PASSWORD & RESET PASSWORD PAGES
+=========================================== */
+
+.password-reset-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 90vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+}
+
+.password-reset-container {
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--white-color);
+  padding: 3rem 2.5rem;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.password-reset-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.password-reset-header h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: var(--dark-color);
+  font-weight: 700;
+}
+
+.password-reset-header p {
+  color: #666;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Form Styling */
+.password-reset-form .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.password-reset-form .form-group label {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+  color: var(--dark-color);
+  font-size: 0.95rem;
+}
+
+.password-reset-form .form-group input {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: var(--font-family);
+  transition: all 0.3s ease;
+  background-color: #f8f9fa;
+}
+
+.password-reset-form .form-group input:focus {
+  border-color: var(--primary-color);
+  background-color: var(--white-color);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 90, 158, 0.1);
+}
+
+.password-reset-form .form-group input::placeholder {
+  color: #aaa;
+}
+
+/* Password Input with Toggle */
+.password-input-wrapper {
+  position: relative;
+}
+
+.password-input-wrapper input {
+  padding-right: 3.5rem;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+  font-weight: 600;
+  transition: color 0.3s;
+}
+
+.password-toggle-btn:hover {
+  color: var(--primary-color);
+}
+
+/* OTP Input Styling */
+.otp-input {
+  letter-spacing: 0.5em !important;
+  font-size: 1.2rem !important;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Submit Button */
+.password-reset-form .btn-submit {
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  font-size: 1.05rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background-color: var(--primary-color);
+  color: var(--white-color);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 90, 158, 0.3);
+}
+
+.password-reset-form .btn-submit:hover {
+  background-color: #004172;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 90, 158, 0.4);
+}
+
+.password-reset-form .btn-submit:active {
+  transform: translateY(0);
+}
+
+/* Alert Messages */
+.alert-message {
+  margin-top: 1.2rem;
+  padding: 0.9rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  text-align: center;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.alert-success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.alert-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Back to Login Link */
+.back-to-login {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.back-to-login a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.back-to-login a:hover {
+  color: #004172;
+  text-decoration: underline;
+}
+
+/* Password Strength Indicator (Optional) */
+.password-strength {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.password-strength-bar {
+  height: 4px;
+  border-radius: 2px;
+  margin-top: 0.3rem;
+  background-color: #e0e0e0;
+  overflow: hidden;
+}
+
+.password-strength-fill {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.strength-weak .password-strength-fill {
+  width: 33%;
+  background-color: #e74c3c;
+}
+
+.strength-medium .password-strength-fill {
+  width: 66%;
+  background-color: #f39c12;
+}
+
+.strength-strong .password-strength-fill {
+  width: 100%;
+  background-color: #27ae60;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .password-reset-section {
+    padding: 1rem;
+  }
+
+  .password-reset-container {
+    padding: 2rem 1.5rem;
+    max-width: 100%;
+  }
+
+  .password-reset-header h2 {
+    font-size: 1.6rem;
+  }
+
+  .password-reset-header p {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .password-reset-container {
+    padding: 1.5rem 1rem;
+  }
+
+  .password-reset-header h2 {
+    font-size: 1.4rem;
+  }
+}
