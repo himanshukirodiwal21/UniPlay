@@ -19,7 +19,7 @@ const userSchema = new Schema(
       lowercase: true,
       trim: true,
     },
-    fullName: {     // ✅ fullName hi rakha
+    fullName: {
       type: String,
       required: true,
       trim: true,
@@ -33,12 +33,19 @@ const userSchema = new Schema(
       type: String,
       default: "",
     },
-    isVerified: {    // ✅ verification flag
+    isVerified: {
       type: Boolean,
       default: false,
     },
-    verficationCode: {  // ✅ OTP/code
+    verficationCode: {  // Registration OTP
       type: String,
+    },
+    // ✅ YEH DO FIELDS ADD KARO
+    resetPasswordOtp: {  // Forgot Password OTP
+      type: String,
+    },
+    resetPasswordExpiry: {  // OTP expiry time
+      type: Date,
     },
   },
   {

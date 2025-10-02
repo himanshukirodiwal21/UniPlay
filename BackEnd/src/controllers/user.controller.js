@@ -244,7 +244,7 @@ const forgotPassword = async (req, res) => {
 // Reset password using OTP
 const resetPassword = async (req, res) => {
     try {
-        console.log("Reset password request body:", req.body);
+        
 
         const { email, otp, newPassword } = req.body;
 
@@ -265,8 +265,8 @@ const resetPassword = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
         }
 
-        // Update password
-        user.password = await bcrypt.hash(newPassword, 10);
+        // ✅ Update password (pre-save hook will hash it automatically)
+        user.password = newPassword;  // ❌ YAHAN bcrypt.hash MAT KARO
         user.resetPasswordOtp = undefined;
         user.resetPasswordExpiry = undefined;
         await user.save();
@@ -278,5 +278,37 @@ const resetPassword = async (req, res) => {
     }
 };
 
+// Verify OTP for forgot password
+const verifyResetOtp = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
 
-export { registerUser, loginUser, Verifyemail, forgotPassword, resetPassword };
+        if (!email || !otp) {
+            return res.status(400).json({ success: false, message: "Email and OTP are required" });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // ✅ CORRECTED LOGIC
+        if (
+            !user.resetPasswordOtp ||
+            user.resetPasswordOtp !== otp.toString().trim() ||
+            user.resetPasswordExpiry < Date.now()  // ✅ YEH SAHI HAI
+        ) {
+            return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
+        }
+
+        return res.status(200).json({ success: true, message: "OTP verified successfully" });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+
+
+export { registerUser, loginUser, Verifyemail, forgotPassword, resetPassword,verifyResetOtp };

@@ -49,7 +49,7 @@ const ForgotPasswordPage = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, otp }),
+          body: JSON.stringify({ email, otp: otp.toString().trim() }),
         }
       );
 

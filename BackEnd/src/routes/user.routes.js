@@ -6,7 +6,8 @@ import {
     loginUser,
     Verifyemail,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    verifyResetOtp
 } from "../controllers/user.controller.js";
 import {User} from "../models/user.models.js";
 // import { upload } from "../middlewares/multer.middleware.js"; // no longer needed
@@ -26,6 +27,7 @@ router.route("/login").post(loginUser)
 // router.route("/refresh-token").post(refreshAccessToken)
 
 router.post("/forgot-password", forgotPassword);  // send OTP
+router.post("/verify-otp", verifyResetOtp);
 router.post("/reset-password", resetPassword);    // verify OTP + set new password
 
 
