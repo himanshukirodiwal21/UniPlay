@@ -428,7 +428,7 @@
 
 // src/pages/LoginPage.jsx (ya AuthPages.jsx)
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Mail,
   Lock,
@@ -442,7 +442,11 @@ import {
 
 export default function AuthPages() {
   const navigate = useNavigate();
-  const [currentPage, setCurrentPage] = useState("login");
+
+  const location = useLocation(); // ⬅️ get state from router
+  const initialForm = location.state?.form || "login"; // ⬅️ default login
+  const [currentPage, setCurrentPage] = useState(initialForm);
+
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({

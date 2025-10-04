@@ -62,7 +62,7 @@ const ForgotPasswordPage = () => {
       // Redirect to reset password page with email in state
       setTimeout(() => {
         navigate("/reset-password", { state: { email, otp } });
-      }, 1000);
+      }, 0);
     } catch (err) {
       setError(err.message);
     }

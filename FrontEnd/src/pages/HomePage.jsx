@@ -53,7 +53,14 @@ const HomePage = () => {
           <h2 className="section-title">🔥 Upcoming Events</h2>
           <div className="card-grid">
             {events.length === 0 ? (
-              <p style={{ fontSize: "1.2rem", color: "#555", textAlign: "center", width: "100%" }}>
+              <p
+                style={{
+                  fontSize: "1.2rem",
+                  color: "#555",
+                  textAlign: "center",
+                  width: "100%",
+                }}
+              >
                 No upcoming events approved by admin yet. Check back later!
               </p>
             ) : (
@@ -61,16 +68,24 @@ const HomePage = () => {
                 .filter((event) => event.status === "approved") // only show approved events
                 .map((event) => (
                   <div key={event._id} className="card">
-                    <img src={event.image || "/default-event.jpg"} alt={event.name} />
+                    <img
+                      src={event.image || "/default-event.jpg"}
+                      alt={event.name}
+                    />
                     <div className="card-content">
                       <h3>{event.name}</h3>
                       <p>
-                        <i className="fa-regular fa-calendar-alt"></i> Starts: {event.date}
+                        <i className="fa-regular fa-calendar-alt"></i> Starts:{" "}
+                        {event.date}
                       </p>
                       <p>
-                        <i className="fa-solid fa-location-dot"></i> {event.location}
+                        <i className="fa-solid fa-location-dot"></i>{" "}
+                        {event.location}
                       </p>
-                      <a href={`/event/${event._id}`} className="btn btn-secondary">
+                      <a
+                        href={`/event/${event._id}`}
+                        className="btn btn-secondary"
+                      >
                         View Details
                       </a>
                     </div>
@@ -84,43 +99,42 @@ const HomePage = () => {
           </a>
         </section>
 
-
-
         {/* Sports Section */}
         <section id="sports" className="container section">
-          <h2 className="section-title">🏆 Choose Your Game</h2>
-          <div className="sports-grid">
-            {[
-              "Cricket",
-              "Football",
-              "Basketball",
-              "E-Sports",
-              "Chess",
-              "Volleyball",
-            ].map((sport) => (
-              <div key={sport} className="sport-item">
-                <i
-                  className={`fa-solid ${sport === "Cricket"
-                      ? "fa-baseball-bat-ball"
-                      : sport === "Football"
-                        ? "fa-futbol"
-                        : sport === "Basketball"
-                          ? "fa-basketball"
-                          : sport === "E-Sports"
-                            ? "fa-gamepad"
-                            : sport === "Volleyball"
-                              ? "fa-volleyball"
-                              : ""
-                    }`}
-                ></i>{" "}
-                {sport}
-              </div>
-            ))}
-            <div className="sport-item">
-              <i className="fa-regular fa-chess-knight"></i> Chess
-            </div>
-          </div>
-        </section>
+  <h2 className="section-title">🏆 Choose Your Game</h2>
+  <div className="sports-grid">
+    {[
+      { name: "Cricket", icon: "fa-baseball-bat-ball" },
+      { name: "Football", icon: "fa-futbol" },
+      { name: "Basketball", icon: "fa-basketball" },
+      { name: "E-Sports", icon: "fa-gamepad" },
+      { name: "Chess", icon: "fa-chess-knight", style: "fa-regular" },
+      { name: "Volleyball", icon: "fa-volleyball-ball" },
+      { name: "Tennis", icon: "fa-table-tennis-paddle-ball" },
+      { name: "Badminton", icon: "fa-shuttlecock" },
+      { name: "Hockey", icon: "fa-hockey-puck" },
+      { name: "Golf", icon: "fa-golf-ball-tee" },
+      { name: "Swimming", icon: "fa-person-swimming" },
+      { name: "Running", icon: "fa-person-running" },
+      { name: "Boxing", icon: "fa-hand-fist" },
+      { name: "Cycling", icon: "fa-person-biking" },
+      { name: "Skating", icon: "fa-person-skating" },
+      { name: "Snowboarding", icon: "fa-person-snowboarding" },
+      { name: "Surfing", icon: "fa-person-surfing" },
+      { name: "Gymnastics", icon: "fa-person-digging" }, // placeholder icon
+      { name: "Table Tennis", icon: "fa-table-tennis-paddle-ball" },
+      { name: "Martial Arts", icon: "fa-hand-sparkles" }, // placeholder icon
+      { name: "Archery", icon: "fa-bow-arrow" }, // FA 6+ icon
+      { name: "Skateboarding", icon: "fa-person-skating" },
+    ].map((sport) => (
+      <div key={sport.name} className="sport-item">
+        <i className={`${sport.style || "fa-solid"} ${sport.icon}`}></i>
+        {sport.name}
+      </div>
+    ))}
+  </div>
+</section>
+
 
         {/* News Section */}
         <section id="news" className="container section">
@@ -213,9 +227,11 @@ const HomePage = () => {
               big tournament, or cheer from the sidelines, your journey starts
               here.
             </p>
-            <a href="#" className="btn btn-primary">
-              Create Your Account
-            </a>
+            {!localStorage.getItem("currentUser") && (
+              <a href="/login" className="btn btn-primary">
+                Create Your Account
+              </a>
+            )}
           </div>
         </section>
       </main>
