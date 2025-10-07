@@ -3,13 +3,13 @@ import { Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import AdminEventRequests from "./pages/AdminEventRequests";
 import UserPanel from "./pages/UserPanel";
-import EventPage from "./pages/EventPage";
 import LoginPage from "./pages/LoginPage";
 import RequestEvent from "./pages/RequestEvent";
 import AboutPage from "./pages/AboutPage";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import EventDetails from "./pages/EventDetails";
 
 // make sure import matches usage
 
@@ -21,12 +21,13 @@ function App() {
       {/* <Route path="/admin" element={<AdminEventRequests />} /> */}
       <Route path="/user" element={<UserPanel />} />
       <Route path="/request-event" element={<RequestEvent />} />
-      <Route path="/create-event" element={<EventPage />} />
-      <Route path="/event/:eventId" element={<EventPage />} />
       <Route path="/login" element={<LoginPage />} />
 
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+      <Route path="/event/:slug-:eventId" element={<EventDetails />} />
+
 
       {/* Protected Admin Route */}
       <Route

@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const HomePage = () => {
   const [events, setEvents] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -23,6 +26,16 @@ const HomePage = () => {
     fetchEvents();
   }, []);
 
+ const handleViewDetails = (event) => {
+  const slug = event.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  navigate(`/event/${slug}-${event._id}`, { state: { event } });
+};
+
+
   return (
     <>
       <Header />
@@ -41,9 +54,11 @@ const HomePage = () => {
               <a href="#events" className="btn btn-primary">
                 → Explore Events
               </a>
-              <a href="register_your_team.html" className="btn btn-secondary">
-                Register Your Team
-              </a>
+              {!localStorage.getItem("currentUser") && (
+                <a href="/login" className="btn btn-secondary">
+                  Create Your Account
+                </a>
+              )}
             </div>
           </div>
         </section>
@@ -82,12 +97,12 @@ const HomePage = () => {
                         <i className="fa-solid fa-location-dot"></i>{" "}
                         {event.location}
                       </p>
-                      <a
-                        href={`/event/${event._id}`}
-                        className="btn btn-secondary"
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => handleViewDetails(event)}
                       >
                         View Details
-                      </a>
+                      </button>
                     </div>
                   </div>
                 ))
@@ -101,40 +116,39 @@ const HomePage = () => {
 
         {/* Sports Section */}
         <section id="sports" className="container section">
-  <h2 className="section-title">🏆 Choose Your Game</h2>
-  <div className="sports-grid">
-    {[
-      { name: "Cricket", icon: "fa-baseball-bat-ball" },
-      { name: "Football", icon: "fa-futbol" },
-      { name: "Basketball", icon: "fa-basketball" },
-      { name: "E-Sports", icon: "fa-gamepad" },
-      { name: "Chess", icon: "fa-chess-knight", style: "fa-regular" },
-      { name: "Volleyball", icon: "fa-volleyball-ball" },
-      { name: "Tennis", icon: "fa-table-tennis-paddle-ball" },
-      { name: "Badminton", icon: "fa-shuttlecock" },
-      { name: "Hockey", icon: "fa-hockey-puck" },
-      { name: "Golf", icon: "fa-golf-ball-tee" },
-      { name: "Swimming", icon: "fa-person-swimming" },
-      { name: "Running", icon: "fa-person-running" },
-      { name: "Boxing", icon: "fa-hand-fist" },
-      { name: "Cycling", icon: "fa-person-biking" },
-      { name: "Skating", icon: "fa-person-skating" },
-      { name: "Snowboarding", icon: "fa-person-snowboarding" },
-      { name: "Surfing", icon: "fa-person-surfing" },
-      { name: "Gymnastics", icon: "fa-person-digging" }, // placeholder icon
-      { name: "Table Tennis", icon: "fa-table-tennis-paddle-ball" },
-      { name: "Martial Arts", icon: "fa-hand-sparkles" }, // placeholder icon
-      { name: "Archery", icon: "fa-bow-arrow" }, // FA 6+ icon
-      { name: "Skateboarding", icon: "fa-person-skating" },
-    ].map((sport) => (
-      <div key={sport.name} className="sport-item">
-        <i className={`${sport.style || "fa-solid"} ${sport.icon}`}></i>
-        {sport.name}
-      </div>
-    ))}
-  </div>
-</section>
-
+          <h2 className="section-title">🏆 Choose Your Game</h2>
+          <div className="sports-grid">
+            {[
+              { name: "Cricket", icon: "fa-baseball-bat-ball" },
+              { name: "Football", icon: "fa-futbol" },
+              { name: "Basketball", icon: "fa-basketball" },
+              { name: "E-Sports", icon: "fa-gamepad" },
+              { name: "Chess", icon: "fa-chess-knight", style: "fa-regular" },
+              { name: "Volleyball", icon: "fa-volleyball-ball" },
+              { name: "Tennis", icon: "fa-table-tennis-paddle-ball" },
+              { name: "Badminton", icon: "fa-shuttlecock" },
+              { name: "Hockey", icon: "fa-hockey-puck" },
+              { name: "Golf", icon: "fa-golf-ball-tee" },
+              { name: "Swimming", icon: "fa-person-swimming" },
+              { name: "Running", icon: "fa-person-running" },
+              { name: "Boxing", icon: "fa-hand-fist" },
+              { name: "Cycling", icon: "fa-person-biking" },
+              { name: "Skating", icon: "fa-person-skating" },
+              { name: "Snowboarding", icon: "fa-person-snowboarding" },
+              { name: "Surfing", icon: "fa-person-surfing" },
+              { name: "Gymnastics", icon: "fa-person-digging" }, // placeholder icon
+              { name: "Table Tennis", icon: "fa-table-tennis-paddle-ball" },
+              { name: "Martial Arts", icon: "fa-hand-sparkles" }, // placeholder icon
+              { name: "Archery", icon: "fa-bow-arrow" }, // FA 6+ icon
+              { name: "Skateboarding", icon: "fa-person-skating" },
+            ].map((sport) => (
+              <div key={sport.name} className="sport-item">
+                <i className={`${sport.style || "fa-solid"} ${sport.icon}`}></i>
+                {sport.name}
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* News Section */}
         <section id="news" className="container section">
