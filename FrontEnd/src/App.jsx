@@ -10,6 +10,7 @@ import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import EventDetails from "./pages/EventDetails";
+import CricketTeamRegistration from "./pages/CricketTeamRegistration";
 
 // make sure import matches usage
 
@@ -27,6 +28,7 @@ function App() {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       <Route path="/event/:slug-:eventId" element={<EventDetails />} />
+      <Route path="/register-team" element={<CricketTeamRegistration />} />
 
 
       {/* Protected Admin Route */}

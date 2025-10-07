@@ -84,6 +84,7 @@ const EventDetails = () => {
     }
     navigate("/register-team", { state: { event } });
   };
+  
 
   return (
     <>
