@@ -119,21 +119,7 @@ const EventDetails = () => {
         <p>
           <strong>Description:</strong> {event.description || "No description"}
         </p>
-        <p>
-          <strong>Status:</strong>{" "}
-          <span
-            style={{
-              color:
-                event.status === "approved"
-                  ? "green"
-                  : event.status === "pending"
-                  ? "orange"
-                  : "red",
-            }}
-          >
-            {event.status?.toUpperCase() || "PENDING"}
-          </span>
-        </p>
+        
 
         {event.status === "approved" ? (
           <button className="btn btn-primary" onClick={handleRegister}>

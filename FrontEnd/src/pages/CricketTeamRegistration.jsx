@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { AlertCircle, CheckCircle } from 'lucide-react';
+import Header from '../components/Header';
+import Footer from '../components/Footer'; 
 
 export default function CricketTeamRegistration() {
   const [teamName, setTeamName] = useState('');
@@ -165,6 +167,9 @@ export default function CricketTeamRegistration() {
   };
 
   return (
+    <>
+    
+    <Header />
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8">
@@ -353,6 +358,9 @@ export default function CricketTeamRegistration() {
           </button>
         </div>
       </main>
+      
     </div>
+        <Footer />
+        </>
   );
 }

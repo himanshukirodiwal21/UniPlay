@@ -3,6 +3,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
+import { generateSlug } from "../utils/helper.js"; // HomePage.jsx mein
 
 const HomePage = () => {
   const [events, setEvents] = useState([]);
@@ -27,14 +28,8 @@ const HomePage = () => {
   }, []);
 
  const handleViewDetails = (event) => {
-  const slug = event.name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  navigate(`/event/${slug}-${event._id}`, { state: { event } });
+  navigate(`/event/${event._id}`, { state: { event } });
 };
-
 
   return (
     <>

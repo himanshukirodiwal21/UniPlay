@@ -27,7 +27,7 @@ function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-      <Route path="/event/:slug-:eventId" element={<EventDetails />} />
+      <Route path="/event/:eventId" element={<EventDetails />} />
       <Route path="/register-team" element={<CricketTeamRegistration />} />
 
 
