@@ -18,13 +18,15 @@ app.use(cookieParser())
 //routes import
 import userRouter from './routes/user.routes.js'
 import requestEventRouter from './routes/event.routes.js';
-import adminRouter from './routes/admin.routes.js';   
+import adminRouter from './routes/admin.routes.js';  
+import teamRegistrationRoutes from "./routes/teamRegistration.routes.js"; 
 
 
 // routes declaration// Routes
 app.use("/api/v1/users", userRouter);  // User routes 
 app.use("/api/v1", requestEventRouter);        // Event routes
 app.use("/api/v1/admin", adminRouter);  // Admin routes
+app.use("/api/v1/team-registrations", teamRegistrationRoutes); // Team Registration routes
 
 
 
