@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import "../assets/EventDetails.css";
 
 const EventDetails = () => {
   // URL: /event/:slug-:eventId
@@ -46,8 +47,11 @@ const EventDetails = () => {
     return (
       <>
         <Header />
-        <main className="container section">
-          <p>Loading event details...</p>
+        <main className="event-details-container">
+          <div className="loading-state">
+            <div className="spinner"></div>
+            <p>Loading event details...</p>
+          </div>
         </main>
         <Footer />
       </>
@@ -57,8 +61,14 @@ const EventDetails = () => {
     return (
       <>
         <Header />
-        <main className="container section">
-          <p style={{ color: "red" }}>❌ {error}</p>
+        <main className="event-details-container">
+          <div className="error-state">
+            <span className="error-icon">❌</span>
+            <p>{error}</p>
+            <button className="btn btn-secondary" onClick={() => navigate(-1)}>
+              ← Go Back
+            </button>
+          </div>
         </main>
         <Footer />
       </>
@@ -68,8 +78,13 @@ const EventDetails = () => {
     return (
       <>
         <Header />
-        <main className="container section">
-          <p>Event not found.</p>
+        <main className="event-details-container">
+          <div className="error-state">
+            <p>Event not found.</p>
+            <button className="btn btn-secondary" onClick={() => navigate(-1)}>
+              ← Go Back
+            </button>
+          </div>
         </main>
         <Footer />
       </>
@@ -84,57 +99,103 @@ const EventDetails = () => {
     }
     navigate("/register-team", { state: { event } });
   };
-  
 
   return (
     <>
       <Header />
-      <main className="container section event-details">
-        <h1>{event.name}</h1>
-        <p>
-          <strong>Date:</strong>{" "}
-          {event.date ? new Date(event.date).toLocaleDateString("en-IN") : "N/A"}
-        </p>
-        <p>
-          <strong>Location:</strong> {event.location || "N/A"}
-        </p>
-        <p>
-          <strong>Eligibility:</strong> {event.eligibility || "N/A"}
-        </p>
+      <main className="event-details-container">
+        <div className="event-details-content">
+          {/* Hero Section with Image */}
+          {event.image && (
+            <div className="event-hero">
+              <img src={event.image} alt={event.name} className="event-hero-image" />
+              <div className="event-hero-overlay">
+                <h1 className="event-title">{event.name}</h1>
+              </div>
+            </div>
+          )}
 
-        {event.image && (
-          <img
-            src={event.image}
-            alt={event.name}
-            style={{ width: "100%", borderRadius: "10px", margin: "1rem 0" }}
-          />
-        )}
+          {/* Event Info Grid */}
+          <div className="event-info-section">
+            {!event.image && <h1 className="event-title-standalone">{event.name}</h1>}
+            
+            <div className="event-meta-grid">
+              <div className="meta-card">
+                <span className="meta-icon">📅</span>
+                <div className="meta-content">
+                  <span className="meta-label">Date</span>
+                  <span className="meta-value">
+                    {event.date ? new Date(event.date).toLocaleDateString("en-IN", {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    }) : "N/A"}
+                  </span>
+                </div>
+              </div>
 
-        <p>
-          <strong>Registration Fee:</strong> ₹{event.registrationFee ?? 0}
-        </p>
-        <p>
-          <strong>Winning Prize:</strong> ₹{event.winningPrize ?? 0}
-        </p>
-        <p>
-          <strong>Description:</strong> {event.description || "No description"}
-        </p>
-        
+              <div className="meta-card">
+                <span className="meta-icon">📍</span>
+                <div className="meta-content">
+                  <span className="meta-label">Location</span>
+                  <span className="meta-value">{event.location || "N/A"}</span>
+                </div>
+              </div>
 
-        {event.status === "approved" ? (
-          <button className="btn btn-primary" onClick={handleRegister}>
-            🏏 Register Your Team
-          </button>
-        ) : (
-          <button className="btn btn-secondary" disabled>
-            Registration Closed
-          </button>
-        )}
+              <div className="meta-card">
+                <span className="meta-icon">✅</span>
+                <div className="meta-content">
+                  <span className="meta-label">Eligibility</span>
+                  <span className="meta-value">{event.eligibility || "N/A"}</span>
+                </div>
+              </div>
 
-        <div style={{ marginTop: "2rem" }}>
-          <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-            ← Back to Events
-          </button>
+              <div className="meta-card highlight">
+                <span className="meta-icon">💰</span>
+                <div className="meta-content">
+                  <span className="meta-label">Registration Fee</span>
+                  <span className="meta-value">₹{event.registrationFee ?? 0}</span>
+                </div>
+              </div>
+
+              <div className="meta-card highlight prize-card">
+                <span className="meta-icon">🏆</span>
+                <div className="meta-content">
+                  <span className="meta-label">Winning Prize</span>
+                  <span className="meta-value prize-amount">₹{event.winningPrize ?? 0}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Description Section */}
+            <div className="event-description-section">
+              <h2 className="section-title">About This Event</h2>
+              <p className="event-description">
+                {event.description || "No description available"}
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="event-actions">
+              {event.status === "approved" ? (
+                <button className="btn btn-primary btn-register" onClick={handleRegister}>
+                  <span className="btn-icon">🏏</span>
+                  Register Your Team
+                </button>
+              ) : (
+                <button className="btn btn-secondary btn-closed" disabled>
+                  <span className="btn-icon">🔒</span>
+                  Registration Closed
+                </button>
+              )}
+
+              <button className="btn btn-outline" onClick={() => navigate(-1)}>
+                <span className="btn-icon">←</span>
+                Back to Events
+              </button>
+            </div>
+          </div>
         </div>
       </main>
       <Footer />

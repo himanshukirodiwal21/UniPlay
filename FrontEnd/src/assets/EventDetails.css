@@ -1,0 +1,366 @@
+/* EventDetails.css */
+
+.event-details-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  padding: 2rem 0;
+}
+
+.event-details-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Hero Section */
+.event-hero {
+  position: relative;
+  width: 100%;
+  height: 500px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  margin-bottom: 3rem;
+}
+
+.event-hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.event-hero:hover .event-hero-image {
+  transform: scale(1.05);
+}
+
+.event-hero-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+  padding: 3rem 2rem 2rem;
+}
+
+.event-title {
+  color: white;
+  font-size: 3rem;
+  font-weight: 800;
+  margin: 0;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  line-height: 1.2;
+}
+
+.event-title-standalone {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #1a202c;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+/* Event Info Section */
+.event-info-section {
+  background: white;
+  border-radius: 20px;
+  padding: 3rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+
+/* Meta Cards Grid */
+.event-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.meta-card {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 15px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.meta-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border-color: #4a90e2;
+}
+
+.meta-card.highlight {
+  background: linear-gradient(135deg, #fff9e6 0%, #ffecb3 100%);
+}
+
+.meta-card.prize-card {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+}
+
+.meta-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.meta-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.meta-label {
+  font-size: 0.875rem;
+  color: #6c757d;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.meta-value {
+  font-size: 1.125rem;
+  color: #2d3748;
+  font-weight: 700;
+}
+
+.prize-amount {
+  font-size: 1.5rem;
+  color: #2e7d32;
+}
+
+/* Description Section */
+.event-description-section {
+  margin-bottom: 3rem;
+  padding: 2rem;
+  background: #f8f9fa;
+  border-radius: 15px;
+  border-left: 5px solid #4a90e2;
+}
+
+.section-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 1rem;
+}
+
+.event-description {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  color: #4a5568;
+  margin: 0;
+}
+
+/* Action Buttons */
+.event-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.btn {
+  padding: 1rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.btn-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  color: white;
+  box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(74, 144, 226, 0.5);
+}
+
+.btn-primary:active {
+  transform: translateY(-1px);
+}
+
+.btn-register {
+  font-size: 1.25rem;
+  padding: 1.25rem 2.5rem;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #5a6268;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(108, 117, 125, 0.3);
+}
+
+.btn-closed {
+  background: #95a5a6;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #4a90e2;
+  border: 2px solid #4a90e2;
+}
+
+.btn-outline:hover {
+  background: #4a90e2;
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(74, 144, 226, 0.3);
+}
+
+/* Loading and Error States */
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 2rem;
+}
+
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 5px solid #e9ecef;
+  border-top-color: #4a90e2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1.5rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-state p,
+.error-state p {
+  font-size: 1.25rem;
+  color: #6c757d;
+  margin: 0;
+}
+
+.error-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.error-state .btn {
+  margin-top: 2rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .event-hero {
+    height: 350px;
+    border-radius: 15px;
+  }
+
+  .event-title {
+    font-size: 2rem;
+  }
+
+  .event-title-standalone {
+    font-size: 1.875rem;
+  }
+
+  .event-info-section {
+    padding: 2rem 1.5rem;
+  }
+
+  .event-meta-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .meta-card {
+    padding: 1.25rem;
+  }
+
+  .event-description-section {
+    padding: 1.5rem;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .event-description {
+    font-size: 1rem;
+  }
+
+  .event-actions {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-register {
+    font-size: 1.125rem;
+    padding: 1rem 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .event-details-container {
+    padding: 1rem 0;
+  }
+
+  .event-hero {
+    height: 250px;
+    margin-bottom: 2rem;
+  }
+
+  .event-title {
+    font-size: 1.5rem;
+    padding: 2rem 1.5rem 1.5rem;
+  }
+
+  .event-info-section {
+    padding: 1.5rem 1rem;
+    border-radius: 15px;
+  }
+
+  .meta-icon {
+    font-size: 2rem;
+  }
+
+  .meta-value {
+    font-size: 1rem;
+  }
+
+  .prize-amount {
+    font-size: 1.25rem;
+  }
+}

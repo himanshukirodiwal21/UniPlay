@@ -1,0 +1,612 @@
+/* =========================================================
+   🏏 Cricket Team Registration Styles
+   ========================================================= */
+
+/* ------------------------------
+   Global Reset & Scroll Control
+------------------------------ */
+html,
+body {
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ------------------------------
+   Layout: Main Container
+------------------------------ */
+.registration-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding-bottom: 4rem;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   🎯 HERO SECTION
+========================================================= */
+.registration-hero {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  padding: 3rem 1rem;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  overflow-x: hidden;
+}
+
+.hero-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.hero-icon {
+  color: #ffd700;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 2px 8px rgba(255, 215, 0, 0.3));
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 0.75rem 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.hero-subtitle {
+  font-size: 1.125rem;
+  color: #e0e7ff;
+  font-weight: 400;
+  margin: 0;
+}
+
+.warning-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ef4444;
+  color: white;
+  padding: 0.625rem 1.25rem;
+  border-radius: 50px;
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* =========================================================
+   🧩 MAIN CONTENT AREA
+========================================================= */
+.registration-main {
+  max-width: 1200px;
+  margin: -2rem auto 0;
+  padding: 0 1rem;
+  overflow-x: hidden;
+}
+
+/* =========================================================
+   ✅ SUCCESS BANNER
+========================================================= */
+.success-banner {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+  animation: slideDown 0.5s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.success-icon {
+  color: white;
+  flex-shrink: 0;
+}
+
+.success-content {
+  color: white;
+}
+
+.success-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+}
+
+.success-text {
+  margin: 0;
+  opacity: 0.95;
+  font-size: 0.9375rem;
+}
+
+/* =========================================================
+   🗂️ SECTION CARDS
+========================================================= */
+.section-card {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  overflow-x: hidden;
+}
+
+.section-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+}
+
+.section-header,
+.players-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 3px solid #f3f4f6;
+}
+
+.section-header svg,
+.players-header svg {
+  color: #667eea;
+  flex-shrink: 0;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+/* =========================================================
+   📝 FORM STYLING
+========================================================= */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.form-label svg {
+  color: #667eea;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: #f9fafb;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-input::placeholder {
+  color: #9ca3af;
+}
+
+.input-error {
+  border-color: #ef4444 !important;
+  background: #fef2f2 !important;
+}
+
+.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+/* =========================================================
+   🧍 PLAYERS SECTION
+========================================================= */
+.players-section {
+  padding: 2rem 1rem;
+}
+
+.table-container {
+  overflow-x: auto; /* allow horizontal scroll */
+  overflow-y: auto;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+
+/* ---------- Players Table ---------- */
+.players-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  table-layout: auto;
+}
+
+.players-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.players-table th {
+  padding: 1rem;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  @media (min-width: 769px) {
+  .players-table th {
+    white-space: nowrap;
+  }
+}
+
+}
+
+.th-number {
+  width: 60px;
+  text-align: center;
+}
+
+.th-name {
+  width: 25%;
+  min-width: 150px;
+}
+
+.th-role {
+  width: 20%;
+  min-width: 120px;
+}
+
+.th-year {
+  width: 20%;
+  min-width: 100px;
+}
+
+.th-check {
+  width: 10%;
+  text-align: center;
+}
+
+/* ---------- Table Body ---------- */
+.players-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.player-row {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.player-row:hover {
+  background: #f9fafb;
+}
+
+/* Row Types */
+.row-captain {
+  background: linear-gradient(90deg, #fef3c7 0%, #ffffff 100%) !important;
+  border-left: 4px solid #f59e0b;
+}
+
+.row-vice {
+  background: linear-gradient(90deg, #dbeafe 0%, #ffffff 100%) !important;
+  border-left: 4px solid #3b82f6;
+}
+
+.row-error {
+  background: #fef2f2 !important;
+  border-left: 4px solid #ef4444;
+}
+
+.td-number {
+  text-align: center;
+  padding: 1rem;
+}
+
+.player-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+/* ---------- Table Inputs ---------- */
+.td-input,
+.td-select,
+.td-check {
+  padding: 0.75rem;
+}
+
+.table-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  transition: all 0.2s ease;
+  background: white;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.table-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.table-select {
+  width: 100%;
+  min-width: 160px;
+  padding: 0.625rem 2.5rem 0.625rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background-color: white;
+  color: #111827;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23667eea' viewBox='0 0 20 20'%3E%3Cpath d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.8rem center;
+  background-size: 1rem;
+}
+
+.table-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.table-select:hover {
+  border-color: #9ca3af;
+}
+
+.td-check {
+  text-align: center;
+}
+
+.table-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #667eea;
+  transition: transform 0.2s ease;
+}
+
+.table-checkbox:hover {
+  transform: scale(1.15);
+}
+
+/* =========================================================
+   ❌ ERROR SECTION
+========================================================= */
+.error-row {
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+}
+
+.error-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+}
+
+.error-icon {
+  color: #ef4444;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.error-list {
+  flex: 1;
+}
+
+.error-list p {
+  margin: 0.25rem 0;
+  color: #dc2626;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* =========================================================
+   🚀 SUBMIT SECTION
+========================================================= */
+.submit-section {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.submit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1rem 3rem;
+  border: none;
+  border-radius: 50px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.submit-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+}
+
+.submit-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submit-button:disabled {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.button-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================================
+   📱 RESPONSIVE DESIGN
+========================================================= */
+@media (max-width: 1024px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+  .section-card {
+    padding: 1.5rem;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .registration-hero {
+    padding: 2rem 1rem;
+  }
+  .hero-title {
+    font-size: 1.75rem;
+  }
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+  .section-card {
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+  .section-title {
+    font-size: 1.25rem;
+  }
+  .players-section {
+    padding: 1.25rem 0.5rem;
+  }
+  .table-container {
+    border-radius: 8px;
+    overflow-x: hidden;
+  }
+  .players-table th {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.75rem;
+  }
+  .th-name {
+    min-width: 150px;
+  }
+  .th-role {
+    width: 22%;
+    min-width: 140px;
+  }
+  .th-year {
+    min-width: 80px;
+  }
+  .td-input,
+  .td-select,
+  .td-check {
+    padding: 0.5rem;
+  }
+  .table-input,
+  .table-select {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .submit-button {
+    width: 100%;
+    font-size: 1rem;
+    padding: 0.875rem 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.5rem;
+  }
+  .hero-subtitle {
+    font-size: 0.9375rem;
+  }
+  .section-header,
+  .players-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .success-banner {
+    flex-direction: column;
+    text-align: center;
+  }
+  .error-content {
+    flex-direction: column;
+    text-align: center;
+  }
+  .warning-badge {
+    font-size: 0.8125rem;
+    padding: 0.5rem 1rem;
+  }
+}

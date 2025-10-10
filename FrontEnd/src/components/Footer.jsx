@@ -18,7 +18,12 @@ function Footer() {
           </ul>
         </div>
         <div className="footer-col">
-          <h4>Connect With Us</h4>
+          <h4>Contact Us</h4>
+          <ul className="contact-info">
+            <li><i className="fas fa-map-marker-alt"></i> University Campus, Kota, Rajasthan, India</li>
+            <li><i className="fas fa-phone-alt"></i> +91 8058875153</li>
+            <li><i className="fas fa-envelope"></i> support@uniplay.com</li>
+          </ul>
           <div className="social-icons">
             <a href="#"><i className="fab fa-instagram"></i></a>
             <a href="#"><i className="fab fa-facebook-f"></i></a>
