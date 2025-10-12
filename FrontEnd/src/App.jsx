@@ -11,6 +11,9 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import EventDetails from "./pages/EventDetails";
 import CricketTeamRegistration from "./pages/CricketTeamRegistration";
+import EventLanding from "./pages/EventLanding";
+import EventMatches from "./pages/EventMatches";
+
 
 // make sure import matches usage
 
@@ -29,6 +32,9 @@ function App() {
 
       <Route path="/event/:eventId" element={<EventDetails />} />
       <Route path="/register-team" element={<CricketTeamRegistration />} />
+      <Route path="/EventLanding" element={<EventLanding />} />
+      <Route path="/EventMatches" element={<EventMatches />} />
+
 
 
       {/* Protected Admin Route */}

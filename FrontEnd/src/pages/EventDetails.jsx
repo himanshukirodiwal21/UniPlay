@@ -6,8 +6,7 @@ import Footer from "../components/Footer";
 import "../assets/EventDetails.css";
 
 const EventDetails = () => {
-  // URL: /event/:slug-:eventId
-  const { eventId } = useParams(); // get ID from URL
+  const { eventId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -16,7 +15,7 @@ const EventDetails = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (event) return; // already have event from state
+    if (event) return;
 
     if (!eventId) {
       setError("No event ID provided in URL");
@@ -100,12 +99,16 @@ const EventDetails = () => {
     navigate("/register-team", { state: { event } });
   };
 
+  const eventDate = new Date(event.date);
+  const today = new Date();
+  const isEventStarted = eventDate <= today;
+
   return (
     <>
       <Header />
       <main className="event-details-container">
         <div className="event-details-content">
-          {/* Hero Section with Image */}
+          {/* Hero Section */}
           {event.image && (
             <div className="event-hero">
               <img src={event.image} alt={event.name} className="event-hero-image" />
@@ -115,7 +118,7 @@ const EventDetails = () => {
             </div>
           )}
 
-          {/* Event Info Grid */}
+          {/* Event Info */}
           <div className="event-info-section">
             {!event.image && <h1 className="event-title-standalone">{event.name}</h1>}
             
@@ -125,12 +128,14 @@ const EventDetails = () => {
                 <div className="meta-content">
                   <span className="meta-label">Date</span>
                   <span className="meta-value">
-                    {event.date ? new Date(event.date).toLocaleDateString("en-IN", {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    }) : "N/A"}
+                    {event.date
+                      ? new Date(event.date).toLocaleDateString("en-IN", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : "N/A"}
                   </span>
                 </div>
               </div>
@@ -168,7 +173,7 @@ const EventDetails = () => {
               </div>
             </div>
 
-            {/* Description Section */}
+            {/* Description */}
             <div className="event-description-section">
               <h2 className="section-title">About This Event</h2>
               <p className="event-description">
@@ -176,19 +181,40 @@ const EventDetails = () => {
               </p>
             </div>
 
-            {/* Action Buttons */}
+            {/* Actions */}
             <div className="event-actions">
-              {event.status === "approved" ? (
-                <button className="btn btn-primary btn-register" onClick={handleRegister}>
-                  <span className="btn-icon">🏏</span>
-                  Register Your Team
-                </button>
-              ) : (
-                <button className="btn btn-secondary btn-closed" disabled>
-                  <span className="btn-icon">🔒</span>
-                  Registration Closed
-                </button>
-              )}
+              {(() => {
+                if (isEventStarted) {
+                  return (
+                    <button
+                      className="btn btn-secondary btn-view"
+                      onClick={() => navigate("/EventLanding", { state: { event } })}
+                    >
+                      <span className="btn-icon">👀</span>
+                      View Event
+                    </button>
+                  );
+                }
+
+                if (event.status === "approved") {
+                  return (
+                    <button
+                      className="btn btn-primary btn-register"
+                      onClick={handleRegister}
+                    >
+                      <span className="btn-icon">🏏</span>
+                      Register Your Team
+                    </button>
+                  );
+                }
+
+                return (
+                  <button className="btn btn-secondary btn-closed" disabled>
+                    <span className="btn-icon">🔒</span>
+                    Registration Closed
+                  </button>
+                );
+              })()}
 
               <button className="btn btn-outline" onClick={() => navigate(-1)}>
                 <span className="btn-icon">←</span>

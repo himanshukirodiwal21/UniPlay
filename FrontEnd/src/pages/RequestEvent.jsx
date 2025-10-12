@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { useNavigate } from "react-router-dom";
+import EventLanding from "./EventLanding"; 
 
 
 const RequestEvent = () => {
@@ -126,8 +127,13 @@ const RequestEvent = () => {
                 value={formData.date}
                 onChange={handleChange}
                 required
+                min={new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
+                  .toISOString()
+                  .split("T")[0]}
               />
             </div>
+
+
 
             {/* Venue */}
             <div className="form-group">
