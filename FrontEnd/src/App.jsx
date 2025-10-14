@@ -13,6 +13,9 @@ import EventDetails from "./pages/EventDetails";
 import CricketTeamRegistration from "./pages/CricketTeamRegistration";
 import EventLanding from "./pages/EventLanding";
 import EventMatches from "./pages/EventMatches";
+import LiveMatchView from "./pages/LiveMatchView";
+import MatchResult from "./pages/MatchResult";
+import ScorerDashboard from "./pages/ScorerDashboard";
 
 
 // make sure import matches usage
@@ -34,8 +37,9 @@ function App() {
       <Route path="/register-team" element={<CricketTeamRegistration />} />
       <Route path="/EventLanding" element={<EventLanding />} />
       <Route path="/EventMatches" element={<EventMatches />} />
-
-
+      <Route path="/live-match/:matchId" element={<LiveMatchView />} />
+      <Route path="/match-result/:matchId" element={<MatchResult />} />
+      <Route path="/ScorerDashboard" element={<ScorerDashboard />} /> 
 
       {/* Protected Admin Route */}
       <Route

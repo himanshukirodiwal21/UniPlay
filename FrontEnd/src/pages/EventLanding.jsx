@@ -1,6 +1,8 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
+import Footer from '../components/Footer';
+import ScorerDashboard from './ScorerDashboard';
 
 export default function EventLanding() {
   const navigate = useNavigate();
@@ -90,6 +92,7 @@ export default function EventLanding() {
               View Live Matches
             </button>
             <button 
+            onClick={() => navigate('/ScorerDashboard', { state: { event } })}
               style={{...styles.button, ...styles.buttonScorer}}
               onMouseOver={(e) => {
                 e.target.style.transform = 'translateY(-3px)';
@@ -107,6 +110,7 @@ export default function EventLanding() {
           </div>
         </div>
       </div>
+      <Footer />
     </>
   );
 }

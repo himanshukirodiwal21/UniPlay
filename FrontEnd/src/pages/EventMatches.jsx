@@ -1,14 +1,24 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
+import Footer from '../components/Footer';
 
 export default function MatchListing() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('live');
 
   const styles = {
+    pageWrapper: {
+    minHeight: '70vh',
+    width: '100%',
+    background: 'linear-gradient(135deg, rgb(75, 85, 99) 0%, rgb(107, 114, 128) 50%, rgb(156, 163, 175) 100%)',
+    padding: '40px 20px',
+  },
     container: {
       maxWidth: '1200px',
       margin: '0 auto',
       padding: '40px 20px',
+      
     },
     tabsContainer: {
       display: 'flex',
@@ -120,8 +130,17 @@ export default function MatchListing() {
   ];
 
   const handleMatchClick = (matchId) => {
-    console.log('Match clicked:', matchId);
-    // Navigate to match details
+    if (activeTab === 'live') {
+      const match = liveMatches.find(m => m.id === matchId);
+      navigate(`/live-match/${matchId}`, { state: { match } });
+    } else if (activeTab === 'completed') {
+      const match = completedMatches.find(m => m.id === matchId);
+      navigate(`/match-result/${matchId}`, { state: { match } });
+    } else if (activeTab === 'upcoming') {
+      const match = upcomingMatches.find(m => m.id === matchId);
+      // Upcoming match ke liye alag page ya alert
+      alert('Match has not started yet!');
+    }
   };
 
   const renderMatches = () => {
@@ -206,7 +225,7 @@ export default function MatchListing() {
           <div style={styles.scoreLarge}>
             {match.scoreA} vs {match.scoreB}
           </div>
-          <div style={{...styles.matchInfo, color: '#27ae60', fontWeight: '600'}}>
+          <div style={{ ...styles.matchInfo, color: '#27ae60', fontWeight: '600' }}>
             ✅ {match.result}
           </div>
         </div>
@@ -215,48 +234,53 @@ export default function MatchListing() {
   };
 
   return (
-    <div style={styles.container}>
-        <Header />
-      <style>
-        {`
+    <>
+      <Header />
+      <div style={styles.pageWrapper}>
+      <div style={styles.container}>
+        <style>
+          {`
           @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
-          }
-        `}
-      </style>
+            }
+            `}
+        </style>
 
-      <div style={styles.tabsContainer}>
-        <div
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'live' ? styles.tabActive : {}),
-          }}
-          onClick={() => setActiveTab('live')}
-        >
-          🔴 LIVE
+        <div style={styles.tabsContainer}>
+          <div
+            style={{
+              ...styles.tab,
+              ...(activeTab === 'live' ? styles.tabActive : {}),
+            }}
+            onClick={() => setActiveTab('live')}
+          >
+            🔴 LIVE
+          </div>
+          <div
+            style={{
+              ...styles.tab,
+              ...(activeTab === 'upcoming' ? styles.tabActive : {}),
+            }}
+            onClick={() => setActiveTab('upcoming')}
+          >
+            📅 Upcoming
+          </div>
+          <div
+            style={{
+              ...styles.tab,
+              ...(activeTab === 'completed' ? styles.tabActive : {}),
+            }}
+            onClick={() => setActiveTab('completed')}
+          >
+            ✅ Completed
+          </div>
         </div>
-        <div
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'upcoming' ? styles.tabActive : {}),
-          }}
-          onClick={() => setActiveTab('upcoming')}
-        >
-          📅 Upcoming
-        </div>
-        <div
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'completed' ? styles.tabActive : {}),
-          }}
-          onClick={() => setActiveTab('completed')}
-        >
-          ✅ Completed
-        </div>
+
+        {renderMatches()}
       </div>
-
-      {renderMatches()}
-    </div>
+      </div>
+      <Footer />
+    </>
   );
 }
