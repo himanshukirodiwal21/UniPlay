@@ -6,14 +6,21 @@ import {
   getTeamRegistrationById,
   updateTeamRegistration,
   deleteTeamRegistration,
-  updateRegistrationStatus
+  updateRegistrationStatus,
+  getAllTeams
 } from "../controllers/teamregistration.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { isAdmin } from "../middlewares/isAdmin.middleware.js";
 
 const router = express.Router();
 
-router.post("/", registerTeam);
+// ✅ THIS IS THE CORRECTED PART
+// This now handles both POST and GET on the root "/" route
+router.route("/")
+  .post(registerTeam)
+  .get(getAllTeams);
+
+// --- All other routes remain the same ---
 
 router.get("/event/:eventId", getTeamsByEvent);
 
@@ -24,7 +31,6 @@ router.put("/:id", verifyJWT, updateTeamRegistration);
 
 // Delete team registration (team owner only)
 router.delete("/:id", verifyJWT, deleteTeamRegistration);
-
 
 // Update registration status (approve/reject)
 router.patch("/:id/status", verifyJWT, isAdmin, updateRegistrationStatus);

@@ -1,14 +1,16 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import ScorerDashboard from './ScorerDashboard';
+import Header from '../components/Header'; // Adjust path as needed
+import Footer from '../components/Footer'; // Adjust path as needed
+import ScorerDashboard from './ScorerDashboard'; // This import might be for type-checking or context
+import { Eye } from 'lucide-react'; // Make sure you have 'lucide-react' installed
 
 export default function EventLanding() {
   const navigate = useNavigate();
   const location = useLocation();
   const event = location.state?.event;
 
+  // Inline styles for the page layout
   const styles = {
     container: {
       minHeight: '100vh',
@@ -39,26 +41,11 @@ export default function EventLanding() {
     },
     buttonContainer: {
       display: 'flex',
+      flexWrap: 'wrap', // Allows buttons to wrap on smaller screens
       gap: '20px',
       justifyContent: 'center',
       marginTop: '40px',
       padding: '0 20px',
-    },
-    button: {
-      background: 'white',
-      color: '#374151',
-      border: 'none',
-      padding: '18px 40px',
-      borderRadius: '12px',
-      cursor: 'pointer',
-      fontWeight: 'bold',
-      fontSize: '1.1rem',
-      boxShadow: '0 5px 20px rgba(0,0,0,0.2)',
-      transition: 'all 0.3s',
-    },
-    buttonScorer: {
-      background: '#dc2626',
-      color: 'white',
     },
   };
 
@@ -77,36 +64,36 @@ export default function EventLanding() {
           </div>
 
           <div style={styles.buttonContainer}>
+            {/* Button 1: Uses .btn-secondary from style.css */}
             <button 
-              style={styles.button}
+              className="btn btn-secondary"
               onClick={() => navigate('/EventMatches', { state: { event } })}
-              onMouseOver={(e) => {
-                e.target.style.transform = 'translateY(-3px)';
-                e.target.style.boxShadow = '0 8px 30px rgba(0,0,0,0.3)';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 5px 20px rgba(0,0,0,0.2)';
+              style={{
+                backgroundColor: '#b33b3bff',
+                color: '#ffffffff',
+                border: 'none',
               }}
             >
               View Live Matches
             </button>
+
+            {/* Button 2: Uses .btn-primary from style.css */}
             <button 
-            onClick={() => navigate('/ScorerDashboard', { state: { event } })}
-              style={{...styles.button, ...styles.buttonScorer}}
-              onMouseOver={(e) => {
-                e.target.style.transform = 'translateY(-3px)';
-                e.target.style.boxShadow = '0 8px 30px rgba(0,0,0,0.3)';
-                e.target.style.background = '#b91c1c';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 5px 20px rgba(0,0,0,0.2)';
-                e.target.style.background = '#dc2626';
-              }}
+              onClick={() => navigate('/ScorerDashboard', { state: { event } })}
+              className="btn btn-primary"
             >
               Scorer Login
             </button>
+
+            {/* Button 3: Uses .btn-secondary from style.css */}
+            <button
+              onClick={() => navigate(`/registered-teams/${event._id}`)}
+              className="btn btn-secondary btn-view-teams"
+            >
+              <Eye size={20} />
+              <span>View All Registered Teams</span>
+            </button>
+            
           </div>
         </div>
       </div>

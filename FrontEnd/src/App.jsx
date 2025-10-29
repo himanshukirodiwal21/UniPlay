@@ -16,6 +16,9 @@ import EventMatches from "./pages/EventMatches";
 import LiveMatchView from "./pages/LiveMatchView";
 import MatchResult from "./pages/MatchResult";
 import ScorerDashboard from "./pages/ScorerDashboard";
+import RegisteredTeams from './pages/RegisteredTeams';
+
+
 
 
 // make sure import matches usage
@@ -40,6 +43,9 @@ function App() {
       <Route path="/live-match/:matchId" element={<LiveMatchView />} />
       <Route path="/match-result/:matchId" element={<MatchResult />} />
       <Route path="/ScorerDashboard" element={<ScorerDashboard />} /> 
+
+      <Route path="/registered-teams/:eventId" element={<RegisteredTeams />} />
+      
 
       {/* Protected Admin Route */}
       <Route

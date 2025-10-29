@@ -1,6 +1,6 @@
-// src/pages/EventDetails.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { Eye } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "../assets/EventDetails.css";
@@ -30,7 +30,7 @@ const EventDetails = () => {
         const res = await fetch(`http://localhost:8000/api/events/${eventId}`);
         if (!res.ok) throw new Error("Failed to fetch event details");
         const data = await res.json();
-        setEvent(data);
+        setEvent(data); // Assuming API returns the event object directly
       } catch (err) {
         console.error(err);
         setError(err.message);
@@ -111,7 +111,11 @@ const EventDetails = () => {
           {/* Hero Section */}
           {event.image && (
             <div className="event-hero">
-              <img src={event.image} alt={event.name} className="event-hero-image" />
+              <img
+                src={event.image}
+                alt={event.name}
+                className="event-hero-image"
+              />
               <div className="event-hero-overlay">
                 <h1 className="event-title">{event.name}</h1>
               </div>
@@ -120,8 +124,10 @@ const EventDetails = () => {
 
           {/* Event Info */}
           <div className="event-info-section">
-            {!event.image && <h1 className="event-title-standalone">{event.name}</h1>}
-            
+            {!event.image && (
+              <h1 className="event-title-standalone">{event.name}</h1>
+            )}
+
             <div className="event-meta-grid">
               <div className="meta-card">
                 <span className="meta-icon">📅</span>
@@ -152,7 +158,9 @@ const EventDetails = () => {
                 <span className="meta-icon">✅</span>
                 <div className="meta-content">
                   <span className="meta-label">Eligibility</span>
-                  <span className="meta-value">{event.eligibility || "N/A"}</span>
+                  <span className="meta-value">
+                    {event.eligibility || "N/A"}
+                  </span>
                 </div>
               </div>
 
@@ -160,7 +168,9 @@ const EventDetails = () => {
                 <span className="meta-icon">💰</span>
                 <div className="meta-content">
                   <span className="meta-label">Registration Fee</span>
-                  <span className="meta-value">₹{event.registrationFee ?? 0}</span>
+                  <span className="meta-value">
+                    ₹{event.registrationFee ?? 0}
+                  </span>
                 </div>
               </div>
 
@@ -168,7 +178,9 @@ const EventDetails = () => {
                 <span className="meta-icon">🏆</span>
                 <div className="meta-content">
                   <span className="meta-label">Winning Prize</span>
-                  <span className="meta-value prize-amount">₹{event.winningPrize ?? 0}</span>
+                  <span className="meta-value prize-amount">
+                    ₹{event.winningPrize ?? 0}
+                  </span>
                 </div>
               </div>
             </div>
@@ -188,7 +200,9 @@ const EventDetails = () => {
                   return (
                     <button
                       className="btn btn-secondary btn-view"
-                      onClick={() => navigate("/EventLanding", { state: { event } })}
+                      onClick={() =>
+                        navigate("/EventLanding", { state: { event } })
+                      }
                     >
                       <span className="btn-icon">👀</span>
                       View Event
@@ -198,13 +212,24 @@ const EventDetails = () => {
 
                 if (event.status === "approved") {
                   return (
-                    <button
-                      className="btn btn-primary btn-register"
-                      onClick={handleRegister}
-                    >
-                      <span className="btn-icon">🏏</span>
-                      Register Your Team
-                    </button>
+                    <>
+                      <button
+                        className="btn btn-primary btn-register"
+                        onClick={handleRegister}
+                      >
+                        <span className="btn-icon">🏏</span>
+                        Register Your Team
+                      </button>
+                      
+                      {/* --- THIS IS THE FIX --- */}
+                      <button
+                        onClick={() => navigate(`/registered-teams/${event._id}`)}
+                        className="btn btn-secondary btn-view-teams"
+                      >
+                        <Eye size={20} />
+                        <span>View All Registered Teams</span>
+                      </button>
+                    </>
                   );
                 }
 

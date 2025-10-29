@@ -200,3 +200,20 @@ export const updateRegistrationStatus = asyncHandler(async (req, res) => {
     new ApiResponse(200, registration, `Registration ${status} successfully`)
   );
 });
+
+// @desc    Get all team registrations
+// @route   GET /api/v1/team-registrations
+// @access  Public
+export const getAllTeams = asyncHandler(async (req, res) => {
+  const teams = await TeamRegistration.find({})
+    .populate('eventId', 'name') // Optional: get event name
+    .sort({ registrationDate: -1 });
+
+  if (!teams) {
+    throw new ApiError(404, "No teams found");
+  }
+
+  res.status(200).json(
+    new ApiResponse(200, teams, "All teams fetched successfully")
+  );
+});
