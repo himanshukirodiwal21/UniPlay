@@ -20,7 +20,8 @@ function generateRoundRobinSchedule(teams) {
 
   for (let round = 1; round <= numRounds; round++) {
     const opponent = rotatingTeams[rotatingTeams.length - 1];
-    if (opponent !== null) {
+    // ✅ Only add match if both teams exist
+    if (fixedTeam !== null && opponent !== null) {
       schedule.push({
         teamA: fixedTeam,
         teamB: opponent,
@@ -32,6 +33,7 @@ function generateRoundRobinSchedule(teams) {
     for (let i = 0; i < matchesPerRound - 1; i++) {
       const teamA = rotatingTeams[i];
       const teamB = rotatingTeams[rotatingTeams.length - 2 - i];
+      // ✅ Only add match if both teams exist
       if (teamA !== null && teamB !== null) {
         schedule.push({
           teamA,
@@ -82,8 +84,6 @@ function generateKnockoutMatches(topTeams, baseDate, matchCount) {
       scheduledTime: semi2Date,
       venue: "Ground 2",
     });
-
-    // Note: Final will be created after semifinals complete
   }
 
   return knockoutMatches;
@@ -146,12 +146,18 @@ export const generateEventSchedule = async (req, res) => {
     const roundRobinMatches = generateRoundRobinSchedule(teamIds);
     console.log(`✅ Round Robin: ${roundRobinMatches.length} matches`);
 
+    // ✅ IMPORTANT: Filter out any matches with null teams (safety check)
+    const validRoundRobinMatches = roundRobinMatches.filter(
+      m => m.teamA !== null && m.teamB !== null
+    );
+    console.log(`✅ Valid Round Robin matches: ${validRoundRobinMatches.length}`);
+
     // Create scheduled times
     const baseDate = new Date();
     baseDate.setDate(baseDate.getDate() + 1);
     baseDate.setHours(9, 0, 0, 0);
 
-    const matchesToCreate = roundRobinMatches.map((m, index) => {
+    const matchesToCreate = validRoundRobinMatches.map((m, index) => {
       const scheduleDate = new Date(baseDate);
       const matchesPerDay = 3;
       const dayOffset = Math.floor(index / matchesPerDay);
@@ -217,7 +223,7 @@ export const generateEventSchedule = async (req, res) => {
       message: `✅ Tournament schedule generated successfully!`,
       summary: {
         totalMatches: createdMatches.length,
-        roundRobinMatches: roundRobinMatches.length,
+        roundRobinMatches: validRoundRobinMatches.length,
         knockoutMatches: knockoutMatches.length,
         teams: teamIds.length,
         startDate: baseDate.toLocaleDateString('en-IN'),

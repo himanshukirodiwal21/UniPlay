@@ -8,7 +8,7 @@ export default function EventMatches() {
   const [activeTab, setActiveTab] = useState("upcoming");
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null); // ✅ FIXED: Added missing state
+  const [error, setError] = useState(null);
 
   const styles = {
     pageWrapper: {
@@ -131,14 +131,12 @@ export default function EventMatches() {
     },
   };
 
-  // 🧠 Fetch matches dynamically from backend
   useEffect(() => {
     const fetchMatches = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Map frontend tab to backend status
         const statusMap = {
           live: "InProgress",
           upcoming: "Scheduled",
@@ -146,13 +144,7 @@ export default function EventMatches() {
         };
 
         const status = statusMap[activeTab];
-
-        // 🔍 Debug logs
-        console.log("🔍 Active Tab:", activeTab);
-        console.log("🔍 Backend Status:", status);
-
         const url = `http://localhost:8000/api/v1/matches?status=${status}`;
-        console.log("🔍 Fetching URL:", url);
 
         const response = await fetch(url, {
           method: "GET",
@@ -161,27 +153,18 @@ export default function EventMatches() {
           },
         });
 
-        console.log("📥 Response Status:", response.status);
-        console.log("📥 Response OK:", response.ok);
-
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("❌ Response Error:", errorText);
           throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
-        console.log("📊 Response Data:", data);
-        console.log("📋 Matches:", data.data);
+        console.log("📊 Matches Data:", data.data);
 
-        // ✅ Backend returns { success: true, total: X, data: [...] }
         setMatches(data.data || []);
       } catch (err) {
         console.error("❌ Fetch Error:", err);
-        console.error("❌ Error Name:", err.name);
-        console.error("❌ Error Message:", err.message);
 
-        // Better error message
         if (err.message.includes("Failed to fetch")) {
           setError(
             "Cannot connect to server. Is backend running on http://localhost:8000?"
@@ -260,7 +243,8 @@ export default function EventMatches() {
       >
         <div style={styles.matchHeader}>
           <span style={styles.teamNames}>
-            {match.teamA?.name || "Team A"} vs {match.teamB?.name || "Team B"}
+            {/* ✅ FIXED: Changed from .name to .teamName */}
+            {match.teamA?.teamName || "Team A"} vs {match.teamB?.teamName || "Team B"}
           </span>
           {match.status === "InProgress" && (
             <span style={styles.liveBadge}>🔴 LIVE</span>
@@ -285,7 +269,8 @@ export default function EventMatches() {
                 fontWeight: "600",
               }}
             >
-              🏆 Winner: {match.winner?.name || "TBD"}
+              {/* ✅ FIXED: Changed from .name to .teamName */}
+              🏆 Winner: {match.winner?.teamName || "TBD"}
             </div>
           </>
         ) : (
