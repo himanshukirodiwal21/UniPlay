@@ -1,4 +1,3 @@
-// /models/match.model.js
 import mongoose from "mongoose";
 
 const matchSchema = new mongoose.Schema(
@@ -10,26 +9,26 @@ const matchSchema = new mongoose.Schema(
       required: true,
     },
 
-    // ⚔️ Competing teams
+    // ⚔️ Competing teams - ✅ FIXED: Changed ref from "Team" to "TeamRegistration"
     teamA: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Team",
+      ref: "TeamRegistration",  // ✅ Changed from "Team"
       required: true,
     },
     teamB: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Team",
+      ref: "TeamRegistration",  // ✅ Changed from "Team"
       required: true,
     },
 
-    // 🏁 Match stage (optional detail)
+    // 🏁 Match stage
     stage: {
       type: String,
       enum: ["RoundRobin", "Semifinal", "Final", "3rdPlace"],
       default: "RoundRobin",
     },
 
-    // 🔢 Round number (for RoundRobin format)
+    // 🔢 Round number
     round: {
       type: Number,
       default: 1,
@@ -54,10 +53,10 @@ const matchSchema = new mongoose.Schema(
       min: 0,
     },
 
-    // 🏆 Winner reference
+    // 🏆 Winner reference - ✅ FIXED: Changed ref from "Team" to "TeamRegistration"
     winner: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Team",
+      ref: "TeamRegistration",  // ✅ Changed from "Team"
       default: null,
     },
 
@@ -75,6 +74,6 @@ const matchSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ✅ Export model (safe for hot reload)
+// ✅ Export model
 const Match = mongoose.models.Match || mongoose.model("Match", matchSchema);
 export default Match;

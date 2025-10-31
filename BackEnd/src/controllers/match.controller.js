@@ -1,5 +1,6 @@
 import Match from "../models/match.model.js";
 import { Event } from "../models/event.models.js";
+import TeamRegistration from "../models/teamRegistration.model.js";
 
 /* -------------------------------------------------------
    ⚙️ Utility: Generate Round Robin Schedule
@@ -8,7 +9,6 @@ function generateRoundRobinSchedule(teams) {
   const schedule = [];
   let teamList = [...teams];
 
-  // If odd number of teams, add a "bye" (null)
   if (teamList.length % 2 !== 0) teamList.push(null);
 
   const numTeams = teamList.length;
@@ -49,7 +49,7 @@ function generateRoundRobinSchedule(teams) {
 }
 
 /* -------------------------------------------------------
-   🏆 Generate Knockout Matches (Semi Finals + Final)
+   🏆 Generate Knockout Matches (Only Semifinals)
 -------------------------------------------------------- */
 function generateKnockoutMatches(topTeams, baseDate, matchCount) {
   const knockoutMatches = [];
@@ -83,58 +83,76 @@ function generateKnockoutMatches(topTeams, baseDate, matchCount) {
       venue: "Ground 2",
     });
 
-    // Final (TBD teams - will be updated after semifinals)
-    const finalDate = new Date(baseDate);
-    finalDate.setDate(baseDate.getDate() + Math.floor(matchCount / 3) + 5);
-    finalDate.setHours(16, 0, 0, 0);
-    
-    knockoutMatches.push({
-      teamA: null, // Winner of Semi 1
-      teamB: null, // Winner of Semi 2
-      stage: "Final",
-      round: 1,
-      scheduledTime: finalDate,
-      venue: "Championship Ground",
-    });
+    // Note: Final will be created after semifinals complete
   }
 
   return knockoutMatches;
 }
 
 /* -------------------------------------------------------
-   🏏 Generate Complete Schedule for an Event
-   (Round Robin + Knockout Stages)
+   🏏 Generate Complete Schedule
 -------------------------------------------------------- */
 export const generateEventSchedule = async (req, res) => {
   try {
     const eventId = req.params.id;
+    
+    console.log(`\n🔍 Generating schedule for event: ${eventId}`);
     const event = await Event.findById(eventId);
 
-    if (!event)
-      return res.status(404).json({ msg: "Event not found" });
+    if (!event) {
+      return res.status(404).json({ 
+        success: false,
+        msg: "Event not found" 
+      });
+    }
 
-    if (event.scheduleGenerated)
-      return res.status(400).json({ msg: "Schedule already generated for this event" });
+    if (event.scheduleGenerated) {
+      return res.status(400).json({ 
+        success: false,
+        msg: "Schedule already generated for this event" 
+      });
+    }
 
-    const teamIds = event.registeredTeams;
-    if (!teamIds || teamIds.length < 2)
-      return res.status(400).json({ msg: "Not enough teams registered (minimum 2 required)" });
+    // ✅ Find teams with 'eventId' field
+    console.log(`🔍 Fetching registered teams for event: ${eventId}`);
+    let registeredTeams = await TeamRegistration.find({ eventId: eventId });
+    console.log(`📊 Method 1 (with eventId filter): ${registeredTeams.length} teams`);
 
-    console.log(`\n🏏 Generating tournament for ${teamIds.length} teams...`);
+    // Fallback: Try 'event' field
+    if (registeredTeams.length === 0) {
+      registeredTeams = await TeamRegistration.find({ event: eventId });
+      console.log(`📊 Method 2 (with event filter): ${registeredTeams.length} teams`);
+    }
+
+    // Fallback: Get all teams
+    if (registeredTeams.length === 0) {
+      console.log("⚠️ No teams found with filters, fetching all teams...");
+      registeredTeams = await TeamRegistration.find({});
+      console.log(`📊 Method 3 (all teams): ${registeredTeams.length} teams`);
+    }
+
+    if (registeredTeams.length < 2) {
+      return res.status(400).json({ 
+        success: false,
+        msg: `Not enough teams registered (Found: ${registeredTeams.length}, Required: minimum 2)`
+      });
+    }
+
+    console.log(`✅ Using ${registeredTeams.length} teams for schedule generation`);
+
+    const teamIds = registeredTeams.map(registration => registration._id);
 
     // Step 1: Generate Round Robin Matches
     const roundRobinMatches = generateRoundRobinSchedule(teamIds);
     console.log(`✅ Round Robin: ${roundRobinMatches.length} matches`);
 
-    // Create realistic scheduled times for Round Robin
+    // Create scheduled times
     const baseDate = new Date();
-    baseDate.setDate(baseDate.getDate() + 1); // Start from tomorrow
-    baseDate.setHours(9, 0, 0, 0); // Start at 9 AM
+    baseDate.setDate(baseDate.getDate() + 1);
+    baseDate.setHours(9, 0, 0, 0);
 
     const matchesToCreate = roundRobinMatches.map((m, index) => {
       const scheduleDate = new Date(baseDate);
-      
-      // Schedule 3 matches per day (9 AM, 2 PM, 6 PM)
       const matchesPerDay = 3;
       const dayOffset = Math.floor(index / matchesPerDay);
       const matchOfDay = index % matchesPerDay;
@@ -158,10 +176,9 @@ export const generateEventSchedule = async (req, res) => {
       };
     });
 
-    // Step 2: Generate Knockout Stage (if 4+ teams)
+    // Step 2: Generate Knockout Stage (Only Semifinals)
     let knockoutMatches = [];
     if (teamIds.length >= 4) {
-      // Take top 4 teams (initially just first 4, will be updated based on points later)
       const topTeams = teamIds.slice(0, 4);
       knockoutMatches = generateKnockoutMatches(topTeams, baseDate, matchesToCreate.length);
       
@@ -172,12 +189,12 @@ export const generateEventSchedule = async (req, res) => {
       }));
 
       matchesToCreate.push(...knockoutMatchesToCreate);
-      console.log(`✅ Knockout Stage: ${knockoutMatches.length} matches (2 Semifinals + 1 Final)`);
+      console.log(`✅ Knockout: ${knockoutMatches.length} matches (Semifinals only)`);
     }
 
-    // Step 3: Insert all matches into database
+    // Step 3: Insert matches
     const createdMatches = await Match.insertMany(matchesToCreate);
-    console.log(`✅ Total ${createdMatches.length} matches created in database`);
+    console.log(`✅ ${createdMatches.length} matches created`);
 
     // Step 4: Initialize leaderboard
     event.leaderboard = teamIds.map((t) => ({ 
@@ -188,6 +205,8 @@ export const generateEventSchedule = async (req, res) => {
       losses: 0,
       draws: 0
     }));
+    
+    event.registeredTeams = teamIds;
     event.scheduleGenerated = true;
     await event.save();
 
@@ -202,22 +221,23 @@ export const generateEventSchedule = async (req, res) => {
         knockoutMatches: knockoutMatches.length,
         teams: teamIds.length,
         startDate: baseDate.toLocaleDateString('en-IN'),
+        note: "Final match will be created after semifinals complete"
       },
       matches: createdMatches,
     });
 
   } catch (err) {
-    console.error("❌ Error generating schedule:", err);
+    console.error("❌ Error:", err);
     res.status(500).json({ 
       success: false,
-      message: "Server error while generating schedule",
+      message: "Server error",
       error: err.message 
     });
   }
 };
 
 /* -------------------------------------------------------
-   📋 Get All Matches (with optional filters)
+   📋 Get All Matches
 -------------------------------------------------------- */
 export const getMatches = async (req, res) => {
   try {
@@ -228,9 +248,18 @@ export const getMatches = async (req, res) => {
     if (event) filter.event = event;
 
     const matches = await Match.find(filter)
-      .populate("teamA", "name")
-      .populate("teamB", "name")
-      .populate("winner", "name")
+      .populate({
+        path: "teamA",
+        select: "teamName captainName"
+      })
+      .populate({
+        path: "teamB", 
+        select: "teamName captainName"
+      })
+      .populate({
+        path: "winner",
+        select: "teamName"
+      })
       .populate("event", "name")
       .sort({ scheduledTime: 1 });
 
@@ -251,9 +280,9 @@ export const getMatches = async (req, res) => {
 export const getMatchById = async (req, res) => {
   try {
     const match = await Match.findById(req.params.id)
-      .populate("teamA", "name")
-      .populate("teamB", "name")
-      .populate("winner", "name")
+      .populate("teamA", "teamName captainName")
+      .populate("teamB", "teamName captainName")
+      .populate("winner", "teamName")
       .populate("event", "name");
 
     if (!match)
@@ -264,7 +293,7 @@ export const getMatchById = async (req, res) => {
       data: match
     });
   } catch (err) {
-    console.error("❌ Error fetching match by ID:", err);
+    console.error("❌ Error fetching match:", err);
     res.status(500).json({ 
       success: false,
       message: "Server error" 
@@ -273,7 +302,7 @@ export const getMatchById = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   🕹️ Update Match Status / Score
+   🕹️ Update Match
 -------------------------------------------------------- */
 export const updateMatch = async (req, res) => {
   try {
@@ -284,9 +313,9 @@ export const updateMatch = async (req, res) => {
       { status, scoreA, scoreB, winner },
       { new: true }
     )
-      .populate("teamA", "name")
-      .populate("teamB", "name")
-      .populate("winner", "name")
+      .populate("teamA", "teamName")
+      .populate("teamB", "teamName")
+      .populate("winner", "teamName")
       .populate("event", "name");
 
     if (!match)
@@ -295,12 +324,10 @@ export const updateMatch = async (req, res) => {
         message: "Match not found" 
       });
 
-    // Update leaderboard if match is completed
     if (status === "Completed" && winner && match.stage === "RoundRobin") {
       const event = await Event.findById(match.event);
       
       if (event && event.leaderboard) {
-        // Update winner's points
         const winnerEntry = event.leaderboard.find(
           entry => entry.team.toString() === winner.toString()
         );
@@ -310,7 +337,6 @@ export const updateMatch = async (req, res) => {
           winnerEntry.matchesPlayed += 1;
         }
 
-        // Update loser's stats
         const loserId = winner.toString() === match.teamA._id.toString() 
           ? match.teamB._id 
           : match.teamA._id;
@@ -323,7 +349,6 @@ export const updateMatch = async (req, res) => {
           loserEntry.matchesPlayed += 1;
         }
 
-        // Sort leaderboard by points
         event.leaderboard.sort((a, b) => b.points - a.points);
         await event.save();
       }
@@ -331,7 +356,7 @@ export const updateMatch = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "✅ Match updated successfully",
+      message: "✅ Match updated",
       data: match,
     });
   } catch (err) {
@@ -344,13 +369,13 @@ export const updateMatch = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   🏆 Get Leaderboard for an Event
+   🏆 Get Leaderboard
 -------------------------------------------------------- */
 export const getEventLeaderboard = async (req, res) => {
   try {
     const eventId = req.params.id;
     const event = await Event.findById(eventId)
-      .populate("leaderboard.team", "name");
+      .populate("leaderboard.team", "teamName");
 
     if (!event)
       return res.status(404).json({ 
