@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
-import { Plus, Play, BarChart3, Calendar, MapPin, Clock, LogOut, User, ArrowLeft, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Play, BarChart3, Calendar, MapPin, Clock, LogOut, User, ArrowLeft, CheckCircle, Trophy } from 'lucide-react';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 
 export default function ScorerDashboard() {
     const [scorerName] = useState('Rahul Kumar');
-    const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' or 'scoring'
+    const [currentView, setCurrentView] = useState('dashboard');
     const [currentMatch, setCurrentMatch] = useState(null);
+    const [activeTab, setActiveTab] = useState('upcoming');
+    
+    // API data states
+    const [matches, setMatches] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     // Scoring state
     const [currentScore, setCurrentScore] = useState({ runs: 145, wickets: 5, overs: 18, balls: 3 });
@@ -14,36 +20,73 @@ export default function ScorerDashboard() {
     const [currentBowler, setCurrentBowler] = useState({ name: 'Shyam Singh', wickets: 3, runs: 28, overs: 4 });
     const [lastBalls, setLastBalls] = useState(['4', '1', '0', 'W', '2', '6']);
 
-    const [assignedMatches] = useState([
-        {
-            id: 1,
-            teamA: 'CSE XI',
-            teamB: 'ECE Tigers',
-            date: 'Today',
-            time: '2:30 PM',
-            venue: 'College Ground',
-            status: 'live'
-        },
-        {
-            id: 2,
-            teamA: 'Mech Warriors',
-            teamB: 'IT Strikers',
-            date: 'Tomorrow',
-            time: '3:00 PM',
-            venue: 'Ground 2',
-            status: 'upcoming'
-        },
-        {
-            id: 3,
-            teamA: 'Civil Champions',
-            teamB: 'EEE Thunders',
-            date: 'Dec 18',
-            time: '4:00 PM',
-            venue: 'Main Stadium',
-            status: 'upcoming'
-        }
-    ]);
+    
 
+    // Fetch matches when tab changes
+    useEffect(() => {
+        if (currentView === 'dashboard') {
+            fetchMatches();
+        }
+    }, [activeTab, currentView]);
+
+    const fetchMatches = async () => {
+    try {
+        setLoading(true);
+        setError(null);
+
+        // Map frontend tab to backend status
+        const statusMap = {
+            'live': 'InProgress',
+            'upcoming': 'Scheduled',
+            'completed': 'Completed'
+        };
+
+        const status = statusMap[activeTab];
+        
+        // 🔍 Debug logs
+        console.log('🔍 Active Tab:', activeTab);
+        console.log('🔍 Backend Status:', status);
+        
+        const url = `http://localhost:8000/api/v1/matches?status=${status}`;
+        console.log('🔍 Fetching URL:', url);
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        
+        console.log('📥 Response Status:', response.status);
+        console.log('📥 Response OK:', response.ok);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Response Error:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('📊 Response Data:', data);
+        console.log('📋 Matches:', data.data);
+        
+        setMatches(data.data || []);
+        
+    } catch (err) {
+        console.error('❌ Fetch Error:', err);
+        console.error('❌ Error Name:', err.name);
+        console.error('❌ Error Message:', err.message);
+        
+        // Better error message
+        if (err.message.includes('Failed to fetch')) {
+            setError('Cannot connect to server. Is backend running on http://localhost:5000?');
+        } else {
+            setError(err.message);
+        }
+    } finally {
+        setLoading(false);
+    }
+};
     const handleLogout = () => {
         if (window.confirm('Are you sure you want to logout?')) {
             alert('Logged out successfully!');
@@ -55,7 +98,7 @@ export default function ScorerDashboard() {
     };
 
     const handleStartScoring = (match = null) => {
-        setCurrentMatch(match || assignedMatches[0]);
+        setCurrentMatch(match || matches[0]);
         setCurrentView('scoring');
     };
 
@@ -70,7 +113,6 @@ export default function ScorerDashboard() {
 
     const handleBallClick = (value) => {
         alert(`Ball recorded: ${value}`);
-        // Add logic to update score
         const newBalls = [value, ...lastBalls.slice(0, 5)];
         setLastBalls(newBalls);
 
@@ -91,45 +133,70 @@ export default function ScorerDashboard() {
     };
 
     const getStatusBadge = (status) => {
-        if (status === 'live') {
-            return (
-                <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 12px',
-                    background: '#ef4444',
-                    color: 'white',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    borderRadius: '9999px',
-                    animation: 'pulse 2s infinite'
-                }}>
-                    🔴 LIVE
-                </span>
-            );
-        }
+        const badges = {
+            'InProgress': {
+                bg: '#ef4444',
+                text: '🔴 LIVE',
+                animate: true
+            },
+            'Scheduled': {
+                bg: '#3b82f6',
+                text: '📅 Upcoming',
+                animate: false
+            },
+            'Completed': {
+                bg: '#10b981',
+                text: '✅ Completed',
+                animate: false
+            }
+        };
+
+        const badge = badges[status] || badges['Scheduled'];
+
         return (
             <span style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px',
                 padding: '4px 12px',
-                background: '#3b82f6',
+                background: badge.bg,
                 color: 'white',
                 fontSize: '12px',
-                fontWeight: '600',
-                borderRadius: '9999px'
+                fontWeight: 'bold',
+                borderRadius: '9999px',
+                animation: badge.animate ? 'pulse 2s infinite' : 'none'
             }}>
-                📅 Upcoming
+                {badge.text}
             </span>
         );
+    };
+
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        if (date.toDateString() === today.toDateString()) {
+            return 'Today';
+        } else if (date.toDateString() === tomorrow.toDateString()) {
+            return 'Tomorrow';
+        } else {
+            return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+        }
+    };
+
+    const formatTime = (dateString) => {
+        return new Date(dateString).toLocaleTimeString('en-IN', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
 
     const styles = {
         container: {
             minHeight: '100vh',
-             background: 'linear-gradient(135deg, rgb(75, 85, 99) 0%, rgb(107, 114, 128) 50%, rgb(156, 163, 175) 100%)',
+            background: 'linear-gradient(135deg, rgb(75, 85, 99) 0%, rgb(107, 114, 128) 50%, rgb(156, 163, 175) 100%)',
         },
         header: {
             background: '#111827',
@@ -240,6 +307,30 @@ export default function ScorerDashboard() {
             cursor: 'pointer',
             boxShadow: '0 10px 15px rgba(0,0,0,0.1)',
             transition: 'all 0.3s'
+        },
+        tabsWrapper: {
+            display: 'flex',
+            gap: '16px',
+            borderBottom: '2px solid #e5e7eb',
+            paddingBottom: '12px',
+            marginBottom: '24px'
+        },
+        tab: {
+            padding: '12px 24px',
+            fontSize: '16px',
+            fontWeight: '600',
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            color: '#6b7280',
+            borderBottom: '3px solid transparent',
+            transition: 'all 0.3s',
+            position: 'relative',
+            top: '2px'
+        },
+        activeTab: {
+            color: '#7c3aed',
+            borderBottomColor: '#7c3aed'
         },
         matchCard: {
             border: '2px solid #e5e7eb',
@@ -400,6 +491,43 @@ export default function ScorerDashboard() {
             justifyContent: 'center',
             fontWeight: 'bold',
             fontSize: '16px'
+        },
+        scoreBox: {
+            background: '#f3f4f6',
+            padding: '16px',
+            borderRadius: '8px',
+            marginTop: '16px'
+        },
+        score: {
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#1f2937'
+        },
+        emptyState: {
+            textAlign: 'center',
+            padding: '64px 24px',
+            color: '#6b7280'
+        },
+        emptyIcon: {
+            fontSize: '48px',
+            marginBottom: '16px'
+        },
+        emptyText: {
+            fontSize: '18px',
+            fontWeight: '600'
+        },
+        loadingSpinner: {
+            textAlign: 'center',
+            padding: '48px',
+            color: '#6b7280'
+        },
+        errorBox: {
+            background: '#fee2e2',
+            border: '2px solid #ef4444',
+            borderRadius: '8px',
+            padding: '16px',
+            color: '#dc2626',
+            textAlign: 'center'
         }
     };
 
@@ -407,18 +535,16 @@ export default function ScorerDashboard() {
     const ScoringInterface = () => (
         <div style={styles.mainContent}>
             <div style={styles.actionsCard}>
-                {/* Match Info */}
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                     <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
-                        {currentMatch?.teamA} vs {currentMatch?.teamB}
+                        {currentMatch?.teamA?.name || 'Team A'} vs {currentMatch?.teamB?.name || 'Team B'}
                     </h2>
-                    {getStatusBadge('live')}
+                    {getStatusBadge('InProgress')}
                 </div>
 
-                {/* Current Score */}
                 <div style={styles.scoreDisplay}>
                     <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px', color: '#6b7280' }}>
-                        {currentMatch?.teamA}
+                        {currentMatch?.teamA?.name || 'Team A'}
                     </div>
                     <div style={styles.scoreLarge}>
                         {currentScore.runs}/{currentScore.wickets}
@@ -428,7 +554,6 @@ export default function ScorerDashboard() {
                     </div>
                 </div>
 
-                {/* Current Batsman & Bowler */}
                 <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
                     <div style={styles.playerBox}>
                         <div style={styles.playerLabel}>🏏 Batsman</div>
@@ -446,7 +571,6 @@ export default function ScorerDashboard() {
                     </div>
                 </div>
 
-                {/* Last 6 Balls */}
                 <div style={styles.lastBallsContainer}>
                     <div style={styles.lastBallsTitle}>Last 6 Balls:</div>
                     <div style={styles.lastBallsList}>
@@ -467,7 +591,6 @@ export default function ScorerDashboard() {
                     </div>
                 </div>
 
-                {/* Ball Buttons */}
                 <div style={styles.ballButtonsGrid}>
                     {['0', '1', '2', '3', '4', '6', 'W', 'WD'].map((value) => (
                         <button
@@ -492,7 +615,6 @@ export default function ScorerDashboard() {
                     ))}
                 </div>
 
-                {/* Submit Button */}
                 <button
                     style={styles.submitBtn}
                     onMouseEnter={(e) => e.target.style.background = '#15803d'}
@@ -505,10 +627,133 @@ export default function ScorerDashboard() {
         </div>
     );
 
+    // Render Matches based on status
+    const renderMatches = () => {
+        if (loading) {
+            return (
+                <div style={styles.loadingSpinner}>
+                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>⏳</div>
+                    <div>Loading matches...</div>
+                </div>
+            );
+        }
+
+        if (error) {
+            return (
+                <div style={styles.errorBox}>
+                    <strong>Error:</strong> {error}
+                </div>
+            );
+        }
+
+        if (matches.length === 0) {
+            const emptyMessages = {
+                live: { icon: '🏏', text: 'No live matches at the moment' },
+                upcoming: { icon: '📅', text: 'No upcoming matches scheduled' },
+                completed: { icon: '🏆', text: 'No completed matches yet' }
+            };
+
+            const message = emptyMessages[activeTab];
+
+            return (
+                <div style={styles.emptyState}>
+                    <div style={styles.emptyIcon}>{message.icon}</div>
+                    <p style={styles.emptyText}>{message.text}</p>
+                </div>
+            );
+        }
+
+        return matches.map((match) => (
+            <div
+                key={match._id}
+                style={styles.matchCard}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#7c3aed';
+                    e.currentTarget.style.boxShadow = '0 10px 20px rgba(124, 58, 237, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = 'none';
+                }}
+            >
+                <div style={styles.matchHeader}>
+                    <h3 style={styles.matchTitle}>
+                        {match.teamA?.name || 'Team A'} vs {match.teamB?.name || 'Team B'}
+                    </h3>
+                    {getStatusBadge(match.status)}
+                </div>
+
+                <div style={styles.matchDetails}>
+                    <div style={styles.detailItem}>
+                        <Calendar size={18} color="#7c3aed" />
+                        <span>{formatDate(match.scheduledTime)}, {formatTime(match.scheduledTime)}</span>
+                    </div>
+                    <div style={styles.detailItem}>
+                        <MapPin size={18} color="#7c3aed" />
+                        <span>{match.venue}</span>
+                    </div>
+                    <div style={styles.detailItem}>
+                        <Clock size={18} color="#7c3aed" />
+                        <span>{match.stage} - Round {match.round}</span>
+                    </div>
+                </div>
+
+                {(match.status === 'InProgress' || match.status === 'Completed') && (
+                    <div style={styles.scoreBox}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                                    {match.teamA?.name}
+                                </div>
+                                <div style={styles.score}>{match.scoreA || 0}</div>
+                            </div>
+                            <div style={{ fontSize: '24px', color: '#9ca3af' }}>vs</div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                                    {match.teamB?.name}
+                                </div>
+                                <div style={styles.score}>{match.scoreB || 0}</div>
+                            </div>
+                        </div>
+                        {match.winner && (
+                            <div style={{
+                                marginTop: '12px',
+                                padding: '8px',
+                                background: '#dcfce7',
+                                borderRadius: '6px',
+                                textAlign: 'center',
+                                color: '#166534',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px'
+                            }}>
+                                <Trophy size={16} />
+                                Winner: {match.winner?.name || 'TBD'}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {match.status === 'InProgress' && (
+                    <button
+                        style={styles.continueBtn}
+                        onClick={() => handleStartScoring(match)}
+                        onMouseEnter={(e) => e.target.style.background = '#15803d'}
+                        onMouseLeave={(e) => e.target.style.background = '#16a34a'}
+                    >
+                        <Play size={20} />
+                        Continue Scoring
+                    </button>
+                )}
+            </div>
+        ));
+    };
+
     // Dashboard Component
     const Dashboard = () => (
         <div style={styles.mainContent}>
-            {/* Welcome Section */}
             <div style={styles.welcomeCard}>
                 <h1 style={styles.welcomeTitle}>
                     🎯 Scorer Dashboard
@@ -518,7 +763,6 @@ export default function ScorerDashboard() {
                 </p>
             </div>
 
-            {/* Quick Actions */}
             <div style={styles.actionsCard}>
                 <h2 style={styles.sectionTitle}>
                     ⚡ Quick Actions
@@ -556,66 +800,44 @@ export default function ScorerDashboard() {
                 </div>
             </div>
 
-            {/* Assigned Matches */}
             <div style={styles.actionsCard}>
                 <h2 style={styles.sectionTitle}>
                     📋 My Assigned Matches
                 </h2>
 
-                {assignedMatches.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '48px 0', color: '#6b7280' }}>
-                        <p style={{ fontSize: '18px' }}>No matches assigned yet</p>
-                    </div>
-                ) : (
-                    <div>
-                        {assignedMatches.map((match) => (
-                            <div
-                                key={match.id}
-                                className="match-card"
-                                style={styles.matchCard}
-                            >
-                                <div style={styles.matchHeader}>
-                                    <h3 style={styles.matchTitle}>
-                                        {match.teamA} vs {match.teamB}
-                                    </h3>
-                                    {getStatusBadge(match.status)}
-                                </div>
+                <div style={styles.tabsWrapper}>
+                    <button
+                        style={{
+                            ...styles.tab,
+                            ...(activeTab === 'live' ? styles.activeTab : {})
+                        }}
+                        onClick={() => setActiveTab('live')}
+                    >
+                        🔴 Live
+                    </button>
+                    <button
+                        style={{
+                            ...styles.tab,
+                            ...(activeTab === 'upcoming' ? styles.activeTab : {})
+                        }}
+                        onClick={() => setActiveTab('upcoming')}
+                    >
+                        📅 Upcoming
+                    </button>
+                    <button
+                        style={{
+                            ...styles.tab,
+                            ...(activeTab === 'completed' ? styles.activeTab : {})
+                        }}
+                        onClick={() => setActiveTab('completed')}
+                    >
+                        ✅ Completed
+                    </button>
+                </div>
 
-                                <div style={styles.matchDetails}>
-                                    <div style={styles.detailItem}>
-                                        <Calendar size={18} color="#7c3aed" />
-                                        <span>{match.date}, {match.time}</span>
-                                    </div>
-                                    <div style={styles.detailItem}>
-                                        <MapPin size={18} color="#7c3aed" />
-                                        <span>{match.venue}</span>
-                                    </div>
-                                    <div style={styles.detailItem}>
-                                        <Clock size={18} color="#7c3aed" />
-                                        <span style={{ fontSize: '14px' }}>
-                                            {match.status === 'live' ? 'In Progress' : 'Not Started'}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {match.status === 'live' && (
-                                    <button
-                                        style={styles.continueBtn}
-                                        onClick={() => handleStartScoring(match)}
-                                        onMouseEnter={(e) => e.target.style.background = '#15803d'}
-                                        onMouseLeave={(e) => e.target.style.background = '#16a34a'}
-                                    >
-                                        <Play size={20} />
-                                        Continue Scoring
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
+                {renderMatches()}
             </div>
 
-            {/* Statistics Summary */}
             <div style={styles.statsGrid}>
                 <div style={{ ...styles.statCard, background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
                     <div style={styles.statLabel}>Total Matches Scored</div>
@@ -624,13 +846,13 @@ export default function ScorerDashboard() {
                 <div style={{ ...styles.statCard, background: 'linear-gradient(135deg, #10b981, #059669)' }}>
                     <div style={styles.statLabel}>Active Matches</div>
                     <div style={styles.statValue}>
-                        {assignedMatches.filter(m => m.status === 'live').length}
+                        {matches.filter(m => m.status === 'InProgress').length}
                     </div>
                 </div>
                 <div style={{ ...styles.statCard, background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' }}>
                     <div style={styles.statLabel}>Upcoming Matches</div>
                     <div style={styles.statValue}>
-                        {assignedMatches.filter(m => m.status === 'upcoming').length}
+                        {matches.filter(m => m.status === 'Scheduled').length}
                     </div>
                 </div>
             </div>
@@ -639,23 +861,57 @@ export default function ScorerDashboard() {
 
     return (
         <>
-        <Header />
+            <Header />
             <div style={styles.container}>
                 <style>{`
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-            }
-            button:hover {
-                transform: translateY(-2px);
-                }
-                .match-card:hover {
-                    border-color: #7c3aed !important;
-                    box-shadow: 0 10px 20px rgba(124, 58, 237, 0.3) !important;
+                    @keyframes pulse {
+                        0%, 100% { opacity:@keyframes pulse {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0.7; }
                     }
-                    `}</style>
+                    button:hover {
+                        transform: translateY(-2px);
+                    }
+                    .match-card:hover {
+                        border-color: #7c3aed !important;
+                        box-shadow: 0 10px 20px rgba(124, 58, 237, 0.3) !important;
+                    }
+                `}</style>
 
-              
+                {/* Custom Header for Scoring View */}
+                {currentView === 'scoring' && (
+                    <div style={styles.header}>
+                        <div style={styles.headerContent}>
+                            <button
+                                style={styles.backBtn}
+                                onClick={handleBackToDashboard}
+                                onMouseEnter={(e) => e.target.style.background = '#4f46e5'}
+                                onMouseLeave={(e) => e.target.style.background = '#6366f1'}
+                            >
+                                <ArrowLeft size={20} />
+                                <span>Back to Dashboard</span>
+                            </button>
+
+                            <div style={styles.userInfo}>
+                                <User size={20} />
+                                <div>
+                                    <div style={styles.userLabel}>Scorer</div>
+                                    <div style={styles.userName}>{scorerName}</div>
+                                </div>
+                            </div>
+
+                            <button
+                                style={styles.logoutBtn}
+                                onClick={handleLogout}
+                                onMouseEnter={(e) => e.target.style.background = '#b91c1c'}
+                                onMouseLeave={(e) => e.target.style.background = '#dc2626'}
+                            >
+                                <LogOut size={20} />
+                                <span>Logout</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Conditional Rendering */}
                 {currentView === 'dashboard' ? <Dashboard /> : <ScoringInterface />}

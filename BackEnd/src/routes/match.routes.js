@@ -1,5 +1,6 @@
 import express from "express";
 import Match from "../models/match.model.js";
+import { generateEventSchedule } from "../controllers/match.controller.js";
 
 const router = express.Router();
 
@@ -12,7 +13,6 @@ router.get("/test", (req, res) => {
   });
 });
 
-
 // ✅ GET /api/v1/matches (optionally filter by status)
 router.get("/", async (req, res) => {
   try {
@@ -23,11 +23,18 @@ router.get("/", async (req, res) => {
       .populate("teamA teamB event")
       .sort({ scheduledTime: 1 });
 
-    res.status(200).json(matches);
+    res.status(200).json({
+      success: true,
+      total: matches.length,
+      data: matches,
+    });
   } catch (err) {
-    console.error("Error fetching matches:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ Error fetching matches:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
+// 🏏 Generate round-robin schedule for an event
+router.post("/:id/generateSchedule", generateEventSchedule);
 
 export default router;

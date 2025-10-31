@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
-export default function MatchListing() {
+export default function EventMatches() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("live");
+  const [activeTab, setActiveTab] = useState("upcoming");
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null); // ✅ FIXED: Added missing state
 
   const styles = {
     pageWrapper: {
@@ -73,6 +74,22 @@ export default function MatchListing() {
       fontWeight: "bold",
       animation: "pulse 2s infinite",
     },
+    upcomingBadge: {
+      background: "#3498db",
+      color: "white",
+      padding: "6px 16px",
+      borderRadius: "20px",
+      fontSize: "12px",
+      fontWeight: "bold",
+    },
+    completedBadge: {
+      background: "#27ae60",
+      color: "white",
+      padding: "6px 16px",
+      borderRadius: "20px",
+      fontSize: "12px",
+      fontWeight: "bold",
+    },
     scoreLarge: {
       fontSize: "1.8rem",
       fontWeight: "bold",
@@ -82,29 +99,96 @@ export default function MatchListing() {
     matchInfo: {
       color: "#7f8c8d",
       fontSize: "14px",
+      marginTop: "10px",
+    },
+    errorBox: {
+      background: "#fee2e2",
+      border: "2px solid #ef4444",
+      borderRadius: "8px",
+      padding: "16px",
+      color: "#dc2626",
+      textAlign: "center",
+      marginTop: "20px",
+    },
+    loadingBox: {
+      textAlign: "center",
+      padding: "40px",
+      color: "#6b7280",
+      fontSize: "18px",
+    },
+    emptyBox: {
+      textAlign: "center",
+      padding: "40px",
+      color: "#6b7280",
+    },
+    emptyIcon: {
+      fontSize: "48px",
+      marginBottom: "16px",
+    },
+    emptyText: {
+      fontSize: "18px",
+      fontWeight: "600",
     },
   };
 
   // 🧠 Fetch matches dynamically from backend
   useEffect(() => {
     const fetchMatches = async () => {
-      setLoading(true);
       try {
-        const status =
-          activeTab === "live"
-            ? "InProgress"
-            : activeTab === "upcoming"
-            ? "Scheduled"
-            : "Completed";
+        setLoading(true);
+        setError(null);
 
-        const res = await fetch(
-          `http://localhost:8000/api/v1/matches?status=${status}`
-        );
-        if (!res.ok) throw new Error("Failed to fetch matches");
-        const data = await res.json();
-        setMatches(data);
+        // Map frontend tab to backend status
+        const statusMap = {
+          live: "InProgress",
+          upcoming: "Scheduled",
+          completed: "Completed",
+        };
+
+        const status = statusMap[activeTab];
+
+        // 🔍 Debug logs
+        console.log("🔍 Active Tab:", activeTab);
+        console.log("🔍 Backend Status:", status);
+
+        const url = `http://localhost:8000/api/v1/matches?status=${status}`;
+        console.log("🔍 Fetching URL:", url);
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        console.log("📥 Response Status:", response.status);
+        console.log("📥 Response OK:", response.ok);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("❌ Response Error:", errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log("📊 Response Data:", data);
+        console.log("📋 Matches:", data.data);
+
+        // ✅ Backend returns { success: true, total: X, data: [...] }
+        setMatches(data.data || []);
       } catch (err) {
-        console.error("Error fetching matches:", err);
+        console.error("❌ Fetch Error:", err);
+        console.error("❌ Error Name:", err.name);
+        console.error("❌ Error Message:", err.message);
+
+        // Better error message
+        if (err.message.includes("Failed to fetch")) {
+          setError(
+            "Cannot connect to server. Is backend running on http://localhost:8000?"
+          );
+        } else {
+          setError(err.message);
+        }
         setMatches([]);
       } finally {
         setLoading(false);
@@ -125,8 +209,39 @@ export default function MatchListing() {
   };
 
   const renderMatches = () => {
-    if (loading) return <p>Loading matches...</p>;
-    if (!matches.length) return <p>No matches found.</p>;
+    if (loading) {
+      return (
+        <div style={styles.loadingBox}>
+          <div style={{ fontSize: "24px", marginBottom: "8px" }}>⏳</div>
+          <div>Loading matches...</div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div style={styles.errorBox}>
+          <strong>Error:</strong> {error}
+        </div>
+      );
+    }
+
+    if (!matches.length) {
+      const emptyMessages = {
+        live: { icon: "🏏", text: "No live matches at the moment" },
+        upcoming: { icon: "📅", text: "No upcoming matches scheduled" },
+        completed: { icon: "🏆", text: "No completed matches yet" },
+      };
+
+      const message = emptyMessages[activeTab];
+
+      return (
+        <div style={styles.emptyBox}>
+          <div style={styles.emptyIcon}>{message.icon}</div>
+          <p style={styles.emptyText}>{message.text}</p>
+        </div>
+      );
+    }
 
     return matches.map((match) => (
       <div
@@ -150,12 +265,18 @@ export default function MatchListing() {
           {match.status === "InProgress" && (
             <span style={styles.liveBadge}>🔴 LIVE</span>
           )}
+          {match.status === "Scheduled" && (
+            <span style={styles.upcomingBadge}>📅 Upcoming</span>
+          )}
+          {match.status === "Completed" && (
+            <span style={styles.completedBadge}>✅ Completed</span>
+          )}
         </div>
 
         {match.status === "Completed" ? (
           <>
             <div style={styles.scoreLarge}>
-              {match.scoreA} - {match.scoreB}
+              {match.scoreA || 0} - {match.scoreB || 0}
             </div>
             <div
               style={{
@@ -164,17 +285,30 @@ export default function MatchListing() {
                 fontWeight: "600",
               }}
             >
-              ✅ Winner: {match.winner?.name || "TBD"}
+              🏆 Winner: {match.winner?.name || "TBD"}
             </div>
           </>
         ) : (
-          <div style={styles.matchInfo}>
-            📅{" "}
-            {match.scheduledTime
-              ? new Date(match.scheduledTime).toLocaleString()
-              : "TBD"}{" "}
-            • 📍 {match.venue || "TBD"}
-          </div>
+          <>
+            <div style={styles.matchInfo}>
+              📅{" "}
+              {match.scheduledTime
+                ? new Date(match.scheduledTime).toLocaleString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "TBD"}
+            </div>
+            <div style={styles.matchInfo}>
+              📍 {match.venue || "Venue TBD"}
+            </div>
+            <div style={styles.matchInfo}>
+              🏟️ {match.stage || "Stage"} - Round {match.round || "TBD"}
+            </div>
+          </>
         )}
       </div>
     ));
