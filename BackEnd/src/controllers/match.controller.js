@@ -20,7 +20,6 @@ function generateRoundRobinSchedule(teams) {
 
   for (let round = 1; round <= numRounds; round++) {
     const opponent = rotatingTeams[rotatingTeams.length - 1];
-    // ✅ Only add match if both teams exist
     if (fixedTeam !== null && opponent !== null) {
       schedule.push({
         teamA: fixedTeam,
@@ -33,7 +32,6 @@ function generateRoundRobinSchedule(teams) {
     for (let i = 0; i < matchesPerRound - 1; i++) {
       const teamA = rotatingTeams[i];
       const teamB = rotatingTeams[rotatingTeams.length - 2 - i];
-      // ✅ Only add match if both teams exist
       if (teamA !== null && teamB !== null) {
         schedule.push({
           teamA,
@@ -57,7 +55,6 @@ function generateKnockoutMatches(topTeams, baseDate, matchCount) {
   const knockoutMatches = [];
 
   if (topTeams.length >= 4) {
-    // Semi Final 1: 1st vs 4th
     const semi1Date = new Date(baseDate);
     semi1Date.setDate(baseDate.getDate() + Math.floor(matchCount / 3) + 2);
     semi1Date.setHours(14, 0, 0, 0);
@@ -71,7 +68,6 @@ function generateKnockoutMatches(topTeams, baseDate, matchCount) {
       venue: "Main Ground",
     });
 
-    // Semi Final 2: 2nd vs 3rd
     const semi2Date = new Date(baseDate);
     semi2Date.setDate(baseDate.getDate() + Math.floor(matchCount / 3) + 2);
     semi2Date.setHours(18, 0, 0, 0);
@@ -113,18 +109,15 @@ export const generateEventSchedule = async (req, res) => {
       });
     }
 
-    // ✅ Find teams with 'eventId' field
     console.log(`🔍 Fetching registered teams for event: ${eventId}`);
     let registeredTeams = await TeamRegistration.find({ eventId: eventId });
     console.log(`📊 Method 1 (with eventId filter): ${registeredTeams.length} teams`);
 
-    // Fallback: Try 'event' field
     if (registeredTeams.length === 0) {
       registeredTeams = await TeamRegistration.find({ event: eventId });
       console.log(`📊 Method 2 (with event filter): ${registeredTeams.length} teams`);
     }
 
-    // Fallback: Get all teams
     if (registeredTeams.length === 0) {
       console.log("⚠️ No teams found with filters, fetching all teams...");
       registeredTeams = await TeamRegistration.find({});
@@ -141,18 +134,14 @@ export const generateEventSchedule = async (req, res) => {
     console.log(`✅ Using ${registeredTeams.length} teams for schedule generation`);
 
     const teamIds = registeredTeams.map(registration => registration._id);
-
-    // Step 1: Generate Round Robin Matches
     const roundRobinMatches = generateRoundRobinSchedule(teamIds);
     console.log(`✅ Round Robin: ${roundRobinMatches.length} matches`);
 
-    // ✅ IMPORTANT: Filter out any matches with null teams (safety check)
     const validRoundRobinMatches = roundRobinMatches.filter(
       m => m.teamA !== null && m.teamB !== null
     );
     console.log(`✅ Valid Round Robin matches: ${validRoundRobinMatches.length}`);
 
-    // Create scheduled times
     const baseDate = new Date();
     baseDate.setDate(baseDate.getDate() + 1);
     baseDate.setHours(9, 0, 0, 0);
@@ -182,7 +171,6 @@ export const generateEventSchedule = async (req, res) => {
       };
     });
 
-    // Step 2: Generate Knockout Stage (Only Semifinals)
     let knockoutMatches = [];
     if (teamIds.length >= 4) {
       const topTeams = teamIds.slice(0, 4);
@@ -198,11 +186,9 @@ export const generateEventSchedule = async (req, res) => {
       console.log(`✅ Knockout: ${knockoutMatches.length} matches (Semifinals only)`);
     }
 
-    // Step 3: Insert matches
     const createdMatches = await Match.insertMany(matchesToCreate);
     console.log(`✅ ${createdMatches.length} matches created`);
 
-    // Step 4: Initialize leaderboard
     event.leaderboard = teamIds.map((t) => ({ 
       team: t, 
       points: 0,
@@ -243,15 +229,21 @@ export const generateEventSchedule = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   📋 Get All Matches
+   📋 Get All Matches (with Auto Live Detection)
 -------------------------------------------------------- */
 export const getMatches = async (req, res) => {
   try {
     const { status, event } = req.query;
     const filter = {};
     
-    if (status) filter.status = status;
     if (event) filter.event = event;
+
+    // ✅ If requesting live matches, get scheduled ones too and filter by time
+    if (status === "InProgress") {
+      filter.status = { $in: ["Scheduled", "InProgress"] };
+    } else if (status) {
+      filter.status = status;
+    }
 
     const matches = await Match.find(filter)
       .populate({
@@ -269,10 +261,25 @@ export const getMatches = async (req, res) => {
       .populate("event", "name")
       .sort({ scheduledTime: 1 });
 
+    // ✅ Filter live matches based on current time
+    let filteredMatches = matches;
+    
+    if (status === "InProgress") {
+      const now = new Date();
+      filteredMatches = matches.filter(match => {
+        const matchTime = new Date(match.scheduledTime);
+        const matchEndTime = new Date(matchTime.getTime() + 3 * 60 * 60 * 1000); // 3 hours
+        
+        return now >= matchTime && now <= matchEndTime;
+      });
+      
+      console.log(`🔴 Live matches detected: ${filteredMatches.length}`);
+    }
+
     res.status(200).json({
       success: true,
-      total: matches.length,
-      data: matches
+      total: filteredMatches.length,
+      data: filteredMatches
     });
   } catch (err) {
     console.error("❌ Error fetching matches:", err);
@@ -399,5 +406,72 @@ export const getEventLeaderboard = async (req, res) => {
       success: false,
       message: "Server error" 
     });
+  }
+};
+
+/* -------------------------------------------------------
+   🔄 Reset Event Schedule (For Development)
+-------------------------------------------------------- */
+export const resetEventSchedule = async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ 
+        success: false,
+        msg: "Event not found" 
+      });
+    }
+
+    await Match.deleteMany({ event: eventId });
+    
+    event.scheduleGenerated = false;
+    event.leaderboard = [];
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      message: "✅ Event schedule reset successfully!"
+    });
+  } catch (err) {
+    console.error("❌ Error resetting schedule:", err);
+    res.status(500).json({ 
+      success: false,
+      message: "Server error",
+      error: err.message 
+    });
+  }
+};
+
+/* -------------------------------------------------------
+   📺 Get Live Matches (Alternative endpoint)
+-------------------------------------------------------- */
+export const getLiveMatches = async (req, res) => {
+  try {
+    const now = new Date();
+    
+    const allMatches = await Match.find({ 
+      status: { $in: ["Scheduled", "InProgress"] }
+    })
+    .populate("teamA", "teamName captainName")
+    .populate("teamB", "teamName captainName")
+    .populate("event", "name")
+    .sort({ scheduledTime: 1 });
+
+    const liveMatches = allMatches.filter(match => {
+      const matchTime = new Date(match.scheduledTime);
+      const matchEndTime = new Date(matchTime.getTime() + 3 * 60 * 60 * 1000);
+      
+      return now >= matchTime && now <= matchEndTime;
+    });
+
+    res.json({
+      success: true,
+      total: liveMatches.length,
+      data: liveMatches
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };

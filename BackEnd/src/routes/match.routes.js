@@ -1,7 +1,14 @@
 import express from "express";
 import Match from "../models/match.model.js";
 import TeamRegistration from "../models/teamRegistration.model.js";
-import { generateEventSchedule } from "../controllers/match.controller.js";
+import { 
+  generateEventSchedule,
+  getMatches,
+  getMatchById,
+  updateMatch,
+  getEventLeaderboard,
+  resetEventSchedule
+} from "../controllers/match.controller.js";
 
 const router = express.Router();
 
@@ -152,41 +159,111 @@ router.post("/fix-teams/:eventId", async (req, res) => {
   }
 });
 
-// ✅ GET /api/v1/matches (optionally filter by status)
-router.get("/", async (req, res) => {
-  try {
-    const { status } = req.query;
-    const filter = status ? { status } : {};
+// ✅ GET /api/v1/matches (with auto live detection)
+router.get("/", getMatches);
 
-    const matches = await Match.find(filter)
-      .populate({
-        path: "teamA",
-        model: "TeamRegistration",
-        select: "teamName captainName"
-      })
-      .populate({
-        path: "teamB",
-        model: "TeamRegistration",
-        select: "teamName captainName"
-      })
-      .populate({
-        path: "event",
-        select: "name"
-      })
-      .sort({ scheduledTime: 1 });
+// 📄 GET single match by ID
+router.get("/:id", getMatchById);
 
-    res.status(200).json({
-      success: true,
-      total: matches.length,
-      data: matches,
-    });
-  } catch (err) {
-    console.error("❌ Error fetching matches:", err);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
+// 🕹️ UPDATE match (scores, status, winner)
+router.put("/:id", updateMatch);
+
+// 🏆 GET leaderboard for an event
+router.get("/events/:id/leaderboard", getEventLeaderboard);
 
 // 🏏 Generate round-robin schedule for an event
 router.post("/:id/generateSchedule", generateEventSchedule);
+
+// 🔄 Reset event schedule (for development)
+router.delete("/events/:id/reset-schedule", resetEventSchedule);
+
+// 🎮 MANUAL: Start a match (change status to InProgress)
+router.post("/:id/start", async (req, res) => {
+  try {
+    const matchId = req.params.id;
+    
+    const match = await Match.findByIdAndUpdate(
+      matchId,
+      { status: "InProgress" },
+      { new: true }
+    )
+      .populate("teamA", "teamName")
+      .populate("teamB", "teamName");
+
+    if (!match) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Match not found" 
+      });
+    }
+
+    console.log(`🔴 Match started: ${match.teamA.teamName} vs ${match.teamB.teamName}`);
+
+    res.json({
+      success: true,
+      message: "Match started successfully",
+      match
+    });
+  } catch (err) {
+    console.error("❌ Error starting match:", err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// 🔄 UTILITY: Update all past scheduled matches to InProgress
+router.post("/update-status", async (req, res) => {
+  try {
+    const now = new Date();
+    console.log(`\n🔄 Checking for past matches...`);
+    console.log(`Current time: ${now.toLocaleString('en-IN')}`);
+
+    const pastMatches = await Match.find({
+      status: "Scheduled",
+      scheduledTime: { $lte: now }
+    }).populate("teamA teamB", "teamName");
+
+    console.log(`Found ${pastMatches.length} past scheduled matches`);
+
+    if (pastMatches.length > 0) {
+      pastMatches.forEach(m => {
+        console.log(`  - ${m.teamA?.teamName} vs ${m.teamB?.teamName} (${new Date(m.scheduledTime).toLocaleString('en-IN')})`);
+      });
+
+      const result = await Match.updateMany(
+        {
+          status: "Scheduled",
+          scheduledTime: { $lte: now }
+        },
+        {
+          $set: { status: "InProgress" }
+        }
+      );
+
+      console.log(`✅ Updated ${result.modifiedCount} matches to InProgress\n`);
+
+      res.json({
+        success: true,
+        message: `Updated ${result.modifiedCount} matches to InProgress`,
+        matchesUpdated: result.modifiedCount,
+        matches: pastMatches
+      });
+    } else {
+      res.json({
+        success: true,
+        message: "No matches to update",
+        matchesUpdated: 0
+      });
+    }
+  } catch (err) {
+    console.error("❌ Error updating status:", err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
 
 export default router;

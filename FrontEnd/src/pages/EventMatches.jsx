@@ -161,7 +161,31 @@ export default function EventMatches() {
         const data = await response.json();
         console.log("📊 Matches Data:", data.data);
 
-        setMatches(data.data || []);
+        // ✅ Frontend filtering for live matches
+        let processedMatches = data.data || [];
+        
+        if (activeTab === "live") {
+          const now = new Date();
+          processedMatches = processedMatches.filter(match => {
+            if (!match.scheduledTime) return false;
+            
+            const matchTime = new Date(match.scheduledTime);
+            const matchEndTime = new Date(matchTime.getTime() + 3 * 60 * 60 * 1000);
+            
+            const isLive = now >= matchTime && now <= matchEndTime;
+            
+            console.log(`Match: ${match.teamA?.teamName} vs ${match.teamB?.teamName}`);
+            console.log(`  Current: ${now.toLocaleString('en-IN')}`);
+            console.log(`  Start: ${matchTime.toLocaleString('en-IN')}`);
+            console.log(`  End: ${matchEndTime.toLocaleString('en-IN')}`);
+            console.log(`  Is Live: ${isLive}`);
+            
+            return isLive;
+          });
+          console.log(`🔴 Live matches filtered: ${processedMatches.length}`);
+        }
+
+        setMatches(processedMatches);
       } catch (err) {
         console.error("❌ Fetch Error:", err);
 
@@ -179,15 +203,36 @@ export default function EventMatches() {
     };
 
     fetchMatches();
+    
+    // ✅ Auto-refresh every 10 seconds to detect live matches
+    const interval = setInterval(() => {
+      fetchMatches();
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, [activeTab]);
 
   const handleMatchClick = (match) => {
-    if (activeTab === "live") {
+    // ✅ Check if match is actually live (time-based)
+    const now = new Date();
+    const matchTime = new Date(match.scheduledTime);
+    const matchEndTime = new Date(matchTime.getTime() + 3 * 60 * 60 * 1000);
+    const isLive = now >= matchTime && now <= matchEndTime;
+
+    if (isLive || match.status === "InProgress") {
       navigate(`/live-match/${match._id}`, { state: { match } });
-    } else if (activeTab === "completed") {
+    } else if (match.status === "Completed") {
       navigate(`/match-result/${match._id}`, { state: { match } });
-    } else if (activeTab === "upcoming") {
-      alert("Match has not started yet!");
+    } else if (match.status === "Scheduled") {
+      // ✅ Check if match is starting soon (within 15 minutes)
+      const timeDiff = matchTime - now;
+      const minutesUntilStart = Math.floor(timeDiff / (1000 * 60));
+      
+      if (minutesUntilStart <= 15 && minutesUntilStart >= 0) {
+        alert(`Match starting in ${minutesUntilStart} minutes! 🏏`);
+      } else {
+        alert("Match has not started yet!");
+      }
     }
   };
 
@@ -226,77 +271,82 @@ export default function EventMatches() {
       );
     }
 
-    return matches.map((match) => (
-      <div
-        key={match._id}
-        style={styles.matchCard}
-        onClick={() => handleMatchClick(match)}
-        onMouseOver={(e) => {
-          e.currentTarget.style.borderColor = "#667eea";
-          e.currentTarget.style.boxShadow =
-            "0 5px 15px rgba(102, 126, 234, 0.3)";
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.borderColor = "#e0e0e0";
-          e.currentTarget.style.boxShadow = "none";
-        }}
-      >
-        <div style={styles.matchHeader}>
-          <span style={styles.teamNames}>
-            {/* ✅ FIXED: Changed from .name to .teamName */}
-            {match.teamA?.teamName || "Team A"} vs {match.teamB?.teamName || "Team B"}
-          </span>
-          {match.status === "InProgress" && (
-            <span style={styles.liveBadge}>🔴 LIVE</span>
-          )}
-          {match.status === "Scheduled" && (
-            <span style={styles.upcomingBadge}>📅 Upcoming</span>
-          )}
-          {match.status === "Completed" && (
-            <span style={styles.completedBadge}>✅ Completed</span>
+    return matches.map((match) => {
+      // ✅ Real-time check for live status
+      const now = new Date();
+      const matchTime = new Date(match.scheduledTime);
+      const matchEndTime = new Date(matchTime.getTime() + 3 * 60 * 60 * 1000);
+      const isLive = now >= matchTime && now <= matchEndTime;
+
+      return (
+        <div
+          key={match._id}
+          style={styles.matchCard}
+          onClick={() => handleMatchClick(match)}
+          onMouseOver={(e) => {
+            e.currentTarget.style.borderColor = "#667eea";
+            e.currentTarget.style.boxShadow =
+              "0 5px 15px rgba(102, 126, 234, 0.3)";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.borderColor = "#e0e0e0";
+            e.currentTarget.style.boxShadow = "none";
+          }}
+        >
+          <div style={styles.matchHeader}>
+            <span style={styles.teamNames}>
+              {match.teamA?.teamName || "Team A"} vs{" "}
+              {match.teamB?.teamName || "Team B"}
+            </span>
+            {isLive && <span style={styles.liveBadge}>🔴 LIVE</span>}
+            {match.status === "Scheduled" && !isLive && (
+              <span style={styles.upcomingBadge}>📅 Upcoming</span>
+            )}
+            {match.status === "Completed" && (
+              <span style={styles.completedBadge}>✅ Completed</span>
+            )}
+          </div>
+
+          {match.status === "Completed" ? (
+            <>
+              <div style={styles.scoreLarge}>
+                {match.scoreA || 0} - {match.scoreB || 0}
+              </div>
+              <div
+                style={{
+                  ...styles.matchInfo,
+                  color: "#27ae60",
+                  fontWeight: "600",
+                }}
+              >
+                🏆 Winner: {match.winner?.teamName || "TBD"}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={styles.matchInfo}>
+                📅{" "}
+                {match.scheduledTime
+                  ? new Date(match.scheduledTime).toLocaleString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "TBD"}
+              </div>
+              <div style={styles.matchInfo}>
+                📍 {match.venue || "Venue TBD"}
+              </div>
+              <div style={styles.matchInfo}>
+                🏟️ {match.stage || "Stage"} - Round {match.round || "TBD"}
+              </div>
+            </>
           )}
         </div>
-
-        {match.status === "Completed" ? (
-          <>
-            <div style={styles.scoreLarge}>
-              {match.scoreA || 0} - {match.scoreB || 0}
-            </div>
-            <div
-              style={{
-                ...styles.matchInfo,
-                color: "#27ae60",
-                fontWeight: "600",
-              }}
-            >
-              {/* ✅ FIXED: Changed from .name to .teamName */}
-              🏆 Winner: {match.winner?.teamName || "TBD"}
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={styles.matchInfo}>
-              📅{" "}
-              {match.scheduledTime
-                ? new Date(match.scheduledTime).toLocaleString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "TBD"}
-            </div>
-            <div style={styles.matchInfo}>
-              📍 {match.venue || "Venue TBD"}
-            </div>
-            <div style={styles.matchInfo}>
-              🏟️ {match.stage || "Stage"} - Round {match.round || "TBD"}
-            </div>
-          </>
-        )}
-      </div>
-    ));
+      );
+    });
   };
 
   return (
