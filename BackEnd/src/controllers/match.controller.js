@@ -238,10 +238,9 @@ export const getMatches = async (req, res) => {
     
     if (event) filter.event = event;
 
-    // ✅ If requesting live matches, get scheduled ones too and filter by time
-    if (status === "InProgress") {
-      filter.status = { $in: ["Scheduled", "InProgress"] };
-    } else if (status) {
+    // ✅ Get all matches (let frontend handle time-based filtering for better accuracy)
+    if (status) {
+      // Only filter by status if explicitly requested
       filter.status = status;
     }
 
@@ -261,25 +260,10 @@ export const getMatches = async (req, res) => {
       .populate("event", "name")
       .sort({ scheduledTime: 1 });
 
-    // ✅ Filter live matches based on current time
-    let filteredMatches = matches;
-    
-    if (status === "InProgress") {
-      const now = new Date();
-      filteredMatches = matches.filter(match => {
-        const matchTime = new Date(match.scheduledTime);
-        const matchEndTime = new Date(matchTime.getTime() + 3 * 60 * 60 * 1000); // 3 hours
-        
-        return now >= matchTime && now <= matchEndTime;
-      });
-      
-      console.log(`🔴 Live matches detected: ${filteredMatches.length}`);
-    }
-
     res.status(200).json({
       success: true,
-      total: filteredMatches.length,
-      data: filteredMatches
+      total: matches.length,
+      data: matches
     });
   } catch (err) {
     console.error("❌ Error fetching matches:", err);

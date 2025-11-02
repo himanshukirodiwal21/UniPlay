@@ -266,4 +266,66 @@ router.post("/update-status", async (req, res) => {
   }
 });
 
+// 🏁 UTILITY: Auto-complete old live matches
+router.post("/complete-old-matches", async (req, res) => {
+  try {
+    const now = new Date();
+    const threeHoursAgo = new Date(now - 3 * 60 * 60 * 1000);
+    
+    console.log(`\n🏁 Checking for matches to complete...`);
+    console.log(`Current time: ${now.toLocaleString('en-IN')}`);
+    console.log(`Cutoff time: ${threeHoursAgo.toLocaleString('en-IN')}`);
+
+    // Find matches that should be completed
+    const oldMatches = await Match.find({
+      status: { $in: ["Scheduled", "InProgress"] },
+      scheduledTime: { $lt: threeHoursAgo }
+    }).populate("teamA teamB", "teamName");
+
+    console.log(`Found ${oldMatches.length} old matches to complete`);
+
+    if (oldMatches.length > 0) {
+      // Complete each match with random scores
+      for (const match of oldMatches) {
+        const scoreA = Math.floor(Math.random() * 100) + 100; // 100-200
+        const scoreB = Math.floor(Math.random() * 100) + 100;
+        const winner = scoreA > scoreB ? match.teamA._id : match.teamB._id;
+
+        await Match.updateOne(
+          { _id: match._id },
+          {
+            $set: {
+              status: "Completed",
+              scoreA: scoreA,
+              scoreB: scoreB,
+              winner: winner
+            }
+          }
+        );
+
+        console.log(`  ✅ Completed: ${match.teamA?.teamName} ${scoreA} - ${scoreB} ${match.teamB?.teamName}`);
+      }
+
+      res.json({
+        success: true,
+        message: `✅ Completed ${oldMatches.length} old matches`,
+        matchesCompleted: oldMatches.length,
+        matches: oldMatches
+      });
+    } else {
+      res.json({
+        success: true,
+        message: "No old matches to complete",
+        matchesCompleted: 0
+      });
+    }
+  } catch (err) {
+    console.error("❌ Error completing matches:", err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
 export default router;

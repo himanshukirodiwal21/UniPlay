@@ -137,14 +137,8 @@ export default function EventMatches() {
         setLoading(true);
         setError(null);
 
-        const statusMap = {
-          live: "InProgress",
-          upcoming: "Scheduled",
-          completed: "Completed",
-        };
-
-        const status = statusMap[activeTab];
-        const url = `http://localhost:8000/api/v1/matches?status=${status}`;
+        // ✅ Fetch ALL matches, filter on frontend for real-time accuracy
+        const url = `http://localhost:8000/api/v1/matches`;
 
         const response = await fetch(url, {
           method: "GET",
@@ -159,32 +153,35 @@ export default function EventMatches() {
         }
 
         const data = await response.json();
-        console.log("📊 Matches Data:", data.data);
+        console.log("📊 All Matches Data:", data.data);
 
-        // ✅ Frontend filtering for live matches
+        // ✅ Filter matches based on current time and active tab
         let processedMatches = data.data || [];
+        const now = new Date();
         
-        if (activeTab === "live") {
-          const now = new Date();
-          processedMatches = processedMatches.filter(match => {
-            if (!match.scheduledTime) return false;
-            
-            const matchTime = new Date(match.scheduledTime);
-            const matchEndTime = new Date(matchTime.getTime() + 3 * 60 * 60 * 1000);
-            
-            const isLive = now >= matchTime && now <= matchEndTime;
-            
-            console.log(`Match: ${match.teamA?.teamName} vs ${match.teamB?.teamName}`);
-            console.log(`  Current: ${now.toLocaleString('en-IN')}`);
-            console.log(`  Start: ${matchTime.toLocaleString('en-IN')}`);
-            console.log(`  End: ${matchEndTime.toLocaleString('en-IN')}`);
-            console.log(`  Is Live: ${isLive}`);
-            
-            return isLive;
-          });
-          console.log(`🔴 Live matches filtered: ${processedMatches.length}`);
-        }
+        processedMatches = processedMatches.filter(match => {
+          if (!match.scheduledTime) return false;
+          
+          const matchTime = new Date(match.scheduledTime);
+          const matchEndTime = new Date(matchTime.getTime() + 3 * 60 * 60 * 1000);
+          const isLive = now >= matchTime && now <= matchEndTime;
+          
+          // Filter based on active tab
+          if (activeTab === "live") {
+            // Show only live matches (time-based)
+            return isLive && match.status !== "Completed";
+          } else if (activeTab === "upcoming") {
+            // Show only upcoming matches (not started yet and not completed)
+            return now < matchTime && match.status !== "Completed";
+          } else if (activeTab === "completed") {
+            // Show only completed matches
+            return match.status === "Completed";
+          }
+          
+          return false;
+        });
 
+        console.log(`📊 Filtered ${processedMatches.length} matches for ${activeTab} tab`);
         setMatches(processedMatches);
       } catch (err) {
         console.error("❌ Fetch Error:", err);
@@ -204,7 +201,7 @@ export default function EventMatches() {
 
     fetchMatches();
     
-    // ✅ Auto-refresh every 10 seconds to detect live matches
+    // ✅ Auto-refresh every 10 seconds for ALL tabs
     const interval = setInterval(() => {
       fetchMatches();
     }, 10000);
@@ -277,6 +274,38 @@ export default function EventMatches() {
       const matchTime = new Date(match.scheduledTime);
       const matchEndTime = new Date(matchTime.getTime() + 3 * 60 * 60 * 1000);
       const isLive = now >= matchTime && now <= matchEndTime;
+      
+      // Calculate time until match starts
+      const timeDiff = matchTime - now;
+      const minutesUntilStart = Math.floor(timeDiff / (1000 * 60));
+      const hoursUntilStart = Math.floor(minutesUntilStart / 60);
+      const daysUntilStart = Math.floor(hoursUntilStart / 24);
+      
+      // Determine badge text (Status takes priority over time)
+      let badgeText = "📅 Upcoming";
+      let badgeStyle = styles.upcomingBadge;
+      
+      // ✅ PRIORITY 1: Check status first
+      if (match.status === "Completed") {
+        badgeText = "✅ Completed";
+        badgeStyle = styles.completedBadge;
+      } else if (match.status === "InProgress" || isLive) {
+        // ✅ PRIORITY 2: Check if manually set to InProgress or time-based live
+        badgeText = "🔴 LIVE";
+        badgeStyle = styles.liveBadge;
+      } else if (minutesUntilStart <= 15 && minutesUntilStart > 0) {
+        badgeText = `⏰ Starting in ${minutesUntilStart}m`;
+        badgeStyle = { ...styles.upcomingBadge, background: "#f39c12" };
+      } else if (hoursUntilStart < 1 && minutesUntilStart > 15) {
+        badgeText = `⏰ ${minutesUntilStart}m away`;
+        badgeStyle = styles.upcomingBadge;
+      } else if (daysUntilStart > 0) {
+        badgeText = `📅 ${daysUntilStart}d away`;
+        badgeStyle = styles.upcomingBadge;
+      } else if (hoursUntilStart > 0) {
+        badgeText = `⏰ ${hoursUntilStart}h away`;
+        badgeStyle = styles.upcomingBadge;
+      }
 
       return (
         <div
@@ -298,13 +327,7 @@ export default function EventMatches() {
               {match.teamA?.teamName || "Team A"} vs{" "}
               {match.teamB?.teamName || "Team B"}
             </span>
-            {isLive && <span style={styles.liveBadge}>🔴 LIVE</span>}
-            {match.status === "Scheduled" && !isLive && (
-              <span style={styles.upcomingBadge}>📅 Upcoming</span>
-            )}
-            {match.status === "Completed" && (
-              <span style={styles.completedBadge}>✅ Completed</span>
-            )}
+            <span style={badgeStyle}>{badgeText}</span>
           </div>
 
           {match.status === "Completed" ? (
