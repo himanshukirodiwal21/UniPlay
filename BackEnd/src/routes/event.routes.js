@@ -35,15 +35,15 @@ router.get("/events/:id", getEventById);
 // ===================== ADMIN ROUTES ===================== //
 
 // 📋 Get all event requests (pending, approved, rejected)
-router.get("/requests", isAdmin, getPendingEvents);
+router.get("/requests",  getPendingEvents);
 
 // ✅ Approve event request
-router.put("/requests/:id/approve", isAdmin, approveEvent);
+router.put("/requests/:id/approve",  approveEvent);
 
 // ❌ Decline event request
-router.put("/requests/:id/decline", isAdmin, declineEvent);
+router.put("/requests/:id/decline",  declineEvent);
 
 // 🗑️ Delete an event and its matches
-router.delete("/requests/:id", isAdmin, deleteEvent);
+router.delete("/requests/:id",  deleteEvent);
 
 export default router;
