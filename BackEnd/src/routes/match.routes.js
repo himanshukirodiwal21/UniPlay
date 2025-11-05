@@ -328,4 +328,127 @@ router.post("/complete-old-matches", async (req, res) => {
   }
 });
 
+// Add these debug routes to your match.routes.js or create a separate debug.routes.js
+
+/* -------------------------------------------------------
+   🔍 DEBUG: Check Event Structure
+-------------------------------------------------------- */
+router.get("/debug/event/:id", async (req, res) => {
+  try {
+    const { Event } = await import("../models/event.model.js");
+    const event = await Event.findById(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      event: {
+        _id: event._id,
+        name: event.name,
+        hasLeaderboard: !!event.leaderboard,
+        leaderboardLength: event.leaderboard?.length || 0,
+        scheduleGenerated: event.scheduleGenerated,
+        registeredTeamsCount: event.registeredTeams?.length || 0,
+        leaderboardSample: event.leaderboard?.[0] || null,
+        fullLeaderboard: event.leaderboard
+      }
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+      stack: err.stack
+    });
+  }
+});
+
+/* -------------------------------------------------------
+   🔍 DEBUG: Check Teams for Event
+-------------------------------------------------------- */
+router.get("/debug/event/:id/teams", async (req, res) => {
+  try {
+    const TeamRegistration = (await import("../models/teamRegistration.model.js")).default;
+    
+    const teams = await TeamRegistration.find({ 
+      $or: [
+        { event: req.params.id },
+        { eventId: req.params.id }
+      ]
+    });
+
+    res.json({
+      success: true,
+      count: teams.length,
+      teams: teams.map(t => ({
+        _id: t._id,
+        teamName: t.teamName,
+        event: t.event,
+        eventId: t.eventId
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+/* -------------------------------------------------------
+   🔍 DEBUG: Full Leaderboard Test
+-------------------------------------------------------- */
+router.get("/debug/leaderboard/:eventId", async (req, res) => {
+  try {
+    const { Event } = await import("../models/event.model.js");
+    const TeamRegistration = (await import("../models/teamRegistration.model.js")).default;
+    
+    console.log("\n🔍 DEBUG LEADERBOARD CHECK");
+    console.log("Event ID:", req.params.eventId);
+    
+    // Step 1: Find event
+    const event = await Event.findById(req.params.eventId);
+    console.log("✅ Event found:", event?.name);
+    console.log("📊 Raw leaderboard:", JSON.stringify(event?.leaderboard, null, 2));
+    
+    // Step 2: Try to populate
+    const populatedEvent = await Event.findById(req.params.eventId)
+      .populate("leaderboard.team");
+    
+    console.log("📊 Populated leaderboard:", JSON.stringify(populatedEvent?.leaderboard, null, 2));
+    
+    // Step 3: Check if team IDs are valid
+    if (event?.leaderboard && event.leaderboard.length > 0) {
+      const teamId = event.leaderboard[0].team;
+      console.log("🔍 Checking first team ID:", teamId);
+      
+      const team = await TeamRegistration.findById(teamId);
+      console.log("✅ Team found:", team?.teamName || "NOT FOUND");
+    }
+    
+    res.json({
+      success: true,
+      debug: {
+        eventFound: !!event,
+        eventName: event?.name,
+        leaderboardLength: event?.leaderboard?.length || 0,
+        rawLeaderboard: event?.leaderboard,
+        populatedLeaderboard: populatedEvent?.leaderboard,
+        firstTeamId: event?.leaderboard?.[0]?.team,
+      }
+    });
+  } catch (err) {
+    console.error("❌ Debug error:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+      stack: err.stack
+    });
+  }
+});
+
 export default router;

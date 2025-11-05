@@ -1,3 +1,4 @@
+// src/routes/event.routes.js
 import { Router } from "express";
 import {
   createEvent,
@@ -6,8 +7,13 @@ import {
   getPendingEvents,
   approveEvent,
   declineEvent,
-  deleteEvent,
+  deleteEvent
+  // ❌ REMOVED getEventLeaderboard from here - it doesn't exist in event.controller.js
 } from "../controllers/event.controller.js";
+
+// ✅ Import getEventLeaderboard from match.controller.js instead
+import { getEventLeaderboard } from "../controllers/match.controller.js";
+
 import { isAdmin } from "../middlewares/isAdmin.middleware.js";
 
 const router = Router();
@@ -32,18 +38,21 @@ router.get("/events", getEvents);
 // 🔍 Get single event details
 router.get("/events/:id", getEventById);
 
+// 🏆 Leaderboard route - ✅ IMPORTED FROM match.controller.js
+router.get("/events/:id/leaderboard", getEventLeaderboard);
+
 // ===================== ADMIN ROUTES ===================== //
 
 // 📋 Get all event requests (pending, approved, rejected)
-router.get("/requests",  getPendingEvents);
+router.get("/requests", getPendingEvents);
 
 // ✅ Approve event request
-router.put("/requests/:id/approve",  approveEvent);
+router.put("/requests/:id/approve", approveEvent);
 
 // ❌ Decline event request
-router.put("/requests/:id/decline",  declineEvent);
+router.put("/requests/:id/decline", declineEvent);
 
 // 🗑️ Delete an event and its matches
-router.delete("/requests/:id",  deleteEvent);
+router.delete("/requests/:id", deleteEvent);
 
 export default router;

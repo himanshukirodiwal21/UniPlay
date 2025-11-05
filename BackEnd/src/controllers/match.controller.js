@@ -393,29 +393,72 @@ export const updateMatch = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   🏆 Get Leaderboard
+   🏆 Get Leaderboard - IMPROVED VERSION
 -------------------------------------------------------- */
 export const getEventLeaderboard = async (req, res) => {
   try {
     const eventId = req.params.id;
+    
+    console.log(`\n🏆 Fetching leaderboard for event: ${eventId}`);
+    
+    // Find the event
     const event = await Event.findById(eventId)
-      .populate("leaderboard.team", "teamName");
+      .populate({
+        path: "leaderboard.team",
+        select: "teamName captainName",
+        model: "TeamRegistration" // Make sure this matches your model name
+      });
 
-    if (!event)
+    if (!event) {
+      console.log(`❌ Event not found: ${eventId}`);
       return res.status(404).json({ 
         success: false,
         message: "Event not found" 
       });
+    }
+
+    console.log(`✅ Event found: ${event.name}`);
+    console.log(`📊 Leaderboard entries: ${event.leaderboard?.length || 0}`);
+
+    // If leaderboard is empty or undefined, return empty array
+    if (!event.leaderboard || event.leaderboard.length === 0) {
+      console.log(`⚠️ No leaderboard data for event: ${event.name}`);
+      return res.status(200).json({
+        success: true,
+        message: "No leaderboard data yet",
+        data: []
+      });
+    }
+
+    // Sort by points (highest first)
+    const sortedLeaderboard = event.leaderboard.sort((a, b) => b.points - a.points);
+
+    console.log(`✅ Returning ${sortedLeaderboard.length} leaderboard entries`);
+    
+    // Log first entry for debugging
+    if (sortedLeaderboard.length > 0) {
+      console.log(`📊 Sample entry:`, {
+        team: sortedLeaderboard[0].team?.teamName || 'Not populated',
+        points: sortedLeaderboard[0].points,
+        wins: sortedLeaderboard[0].wins,
+        losses: sortedLeaderboard[0].losses
+      });
+    }
 
     res.status(200).json({
       success: true,
-      data: event.leaderboard || []
+      data: sortedLeaderboard
     });
+
   } catch (err) {
     console.error("❌ Error fetching leaderboard:", err);
+    console.error("Stack trace:", err.stack);
+    
     res.status(500).json({ 
       success: false,
-      message: "Server error" 
+      message: "Server error while fetching leaderboard",
+      error: err.message,
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
 };

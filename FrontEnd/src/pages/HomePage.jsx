@@ -27,9 +27,9 @@ const HomePage = () => {
     fetchEvents();
   }, []);
 
- const handleViewDetails = (event) => {
-  navigate(`/event/${event._id}`, { state: { event } });
-};
+  const handleViewDetails = (event) => {
+    navigate(`/event/${event._id}`, { state: { event } });
+  };
 
   return (
     <>
@@ -221,9 +221,9 @@ const HomePage = () => {
             </table>
           </div>
           <div style={{ textAlign: "center", marginTop: "2rem" }}>
-            <a href="#" className="btn btn-secondary">
+            <Link to="/points-table" className="btn btn-secondary">
               View Full Leaderboards
-            </a>
+            </Link>
           </div>
         </section>
 
