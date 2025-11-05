@@ -1,7 +1,10 @@
+// src/pages/LiveMatchView.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+
+const BACKEND_URL = 'http://localhost:8000';
 
 export default function LiveMatchView() {
   const { matchId } = useParams();
@@ -10,26 +13,31 @@ export default function LiveMatchView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Auto-refresh every 5 seconds
+  // ✅ Auto-refresh every 3 seconds
   useEffect(() => {
     fetchLiveData();
-    const interval = setInterval(fetchLiveData, 5000);
+    
+    const interval = setInterval(() => {
+      fetchLiveData();
+    }, 3000); // Refresh every 3 seconds
+
     return () => clearInterval(interval);
   }, [matchId]);
 
   const fetchLiveData = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/live-matches/${matchId}`);
+      const response = await fetch(`${BACKEND_URL}/api/v1/live-matches/${matchId}`);
       const data = await response.json();
 
       if (data.success) {
+        console.log('📊 Live data:', data.data);
         setLiveData(data.data);
         setError(null);
       } else {
         setError(data.message);
       }
     } catch (err) {
-      console.error('Error fetching live data:', err);
+      console.error('❌ Error:', err);
       setError('Failed to load live match data');
     } finally {
       setLoading(false);
@@ -101,11 +109,14 @@ export default function LiveMatchView() {
     liveBadge: {
       background: '#ef4444',
       color: 'white',
-      padding: '4px 12px',
-      borderRadius: '12px',
-      fontSize: '12px',
+      padding: '6px 16px',
+      borderRadius: '20px',
+      fontSize: '13px',
       fontWeight: 'bold',
       animation: 'pulse 2s infinite',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
     },
     statsGrid: {
       display: 'grid',
@@ -118,6 +129,33 @@ export default function LiveMatchView() {
       padding: '15px',
       borderRadius: '8px',
       textAlign: 'center',
+    },
+    runRateBox: {
+      background: '#5d6b79ff',
+      padding: '12px',
+      borderRadius: '8px',
+      marginTop: '15px',
+      display: 'flex',
+      justifyContent: 'space-around',
+      fontSize: '0.9rem',
+
+    },
+    refreshIndicator: {
+      position: 'fixed',
+      bottom: '20px',
+      right: '20px',
+      background: '#10b981',
+      color: 'white',
+      padding: '10px 20px',
+      borderRadius: '20px',
+      fontSize: '13px',
+      fontWeight: 'bold',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      zIndex: 1000,
+      animation: 'pulse 2s infinite',
     },
   };
 
@@ -142,7 +180,8 @@ export default function LiveMatchView() {
         <Header />
         <div style={styles.container}>
           <div style={{ textAlign: 'center', padding: '100px 20px', color: 'white' }}>
-            <h2>❌ {error || 'Match not initialized yet'}</h2>
+            <div style={{ fontSize: '3rem', marginBottom: '20px' }}>❌</div>
+            <h2>{error || 'Match not initialized yet'}</h2>
             <button
               onClick={() => navigate('/EventMatches')}
               style={{
@@ -153,9 +192,11 @@ export default function LiveMatchView() {
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: '600',
               }}
             >
-              Back to Matches
+              ← Back to Matches
             </button>
           </div>
         </div>
@@ -164,8 +205,51 @@ export default function LiveMatchView() {
     );
   }
 
+  // ✅ FIXED: Get current innings
   const currentInnings = liveData.innings[liveData.currentInnings - 1];
   const lastBalls = currentInnings?.ballByBall?.slice(-10).reverse() || [];
+  
+  // ✅ FIXED: Calculate run rate
+  const runRate = currentInnings?.overs > 0 
+    ? (currentInnings.score / currentInnings.overs).toFixed(2) 
+    : '0.00';
+
+  // ✅ FIXED: Get team scores - SIMPLIFIED LOGIC
+  const getTeamScore = (teamId) => {
+    // Current innings batting team
+    if (currentInnings?.battingTeam?._id?.toString() === teamId?.toString()) {
+      return {
+        score: currentInnings.score || 0,
+        wickets: currentInnings.wickets || 0,
+        overs: currentInnings.overs || 0,
+        isBatting: true
+      };
+    }
+    
+    // Check if this team batted in first innings
+    if (liveData.innings[0]?.battingTeam?._id?.toString() === teamId?.toString()) {
+      return {
+        score: liveData.innings[0].score || 0,
+        wickets: liveData.innings[0].wickets || 0,
+        overs: liveData.innings[0].overs || 0,
+        isBatting: false
+      };
+    }
+    
+    // Team hasn't batted yet
+    return { score: 0, wickets: 0, overs: 0, isBatting: false };
+  };
+
+  const teamAScore = getTeamScore(liveData.teamA?._id);
+  const teamBScore = getTeamScore(liveData.teamB?._id);
+
+  // ✅ DEBUG: Log scores
+  console.log('Team A ID:', liveData.teamA?._id);
+  console.log('Team B ID:', liveData.teamB?._id);
+  console.log('Current Batting Team:', currentInnings?.battingTeam?._id);
+  console.log('Team A Score:', teamAScore);
+  console.log('Team B Score:', teamBScore);
+  console.log('Current Innings Score:', currentInnings?.score);
 
   return (
     <>
@@ -183,26 +267,33 @@ export default function LiveMatchView() {
         <div style={styles.content}>
           {/* Match Header */}
           <div style={styles.header}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <h1 style={{ margin: 0 }}>🏏 Live Match</h1>
-              <span style={styles.liveBadge}>● LIVE</span>
+              <span style={styles.liveBadge}>
+                <span style={{ 
+                  width: '8px', 
+                  height: '8px', 
+                  borderRadius: '50%', 
+                  background: 'white',
+                  display: 'inline-block',
+                  animation: 'pulse 2s infinite'
+                }}></span>
+                LIVE
+              </span>
             </div>
 
             <div style={styles.teamSection}>
               {/* Team A */}
               <div style={styles.teamBox}>
-                <div style={styles.teamName}>{liveData.teamA?.teamName || 'Team A'}</div>
-                <div style={styles.score}>
-                  {currentInnings?.battingTeam?.toString() === liveData.teamA?._id?.toString()
-                    ? `${currentInnings.score}/${currentInnings.wickets}`
-                    : liveData.innings[0]?.battingTeam?.toString() === liveData.teamA?._id?.toString()
-                    ? `${liveData.innings[0].score}/${liveData.innings[0].wickets}`
-                    : '-'}
+                <div style={styles.teamName}>
+                  {liveData.teamA?.teamName || 'Team A'}
+                  {teamAScore.isBatting && ' *'}
                 </div>
-                <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-                  {currentInnings?.battingTeam?.toString() === liveData.teamA?._id?.toString()
-                    ? `${currentInnings.overs} overs`
-                    : ''}
+                <div style={styles.score}>
+                  {teamAScore.score}/{teamAScore.wickets}
+                </div>
+                <div style={{ fontSize: '0.9rem', opacity: 0.9, marginTop: '5px' }}>
+                  {teamAScore.overs > 0 ? `${teamAScore.overs} overs` : 'Yet to bat'}
                 </div>
               </div>
 
@@ -210,20 +301,45 @@ export default function LiveMatchView() {
 
               {/* Team B */}
               <div style={styles.teamBox}>
-                <div style={styles.teamName}>{liveData.teamB?.teamName || 'Team B'}</div>
-                <div style={styles.score}>
-                  {currentInnings?.battingTeam?.toString() === liveData.teamB?._id?.toString()
-                    ? `${currentInnings.score}/${currentInnings.wickets}`
-                    : liveData.innings[0]?.battingTeam?.toString() === liveData.teamB?._id?.toString()
-                    ? `${liveData.innings[0].score}/${liveData.innings[0].wickets}`
-                    : '-'}
+                <div style={styles.teamName}>
+                  {liveData.teamB?.teamName || 'Team B'}
+                  {teamBScore.isBatting && ' *'}
                 </div>
-                <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-                  {currentInnings?.battingTeam?.toString() === liveData.teamB?._id?.toString()
-                    ? `${currentInnings.overs} overs`
-                    : ''}
+                <div style={styles.score}>
+                  {teamBScore.score}/{teamBScore.wickets}
+                </div>
+                <div style={{ fontSize: '0.9rem', opacity: 0.9, marginTop: '5px' }}>
+                  {teamBScore.overs > 0 ? `${teamBScore.overs} overs` : 'Yet to bat'}
                 </div>
               </div>
+            </div>
+
+            {/* Run Rate */}
+            <div style={styles.runRateBox}>
+              <div>
+                <strong>Current RR:</strong> {runRate}
+              </div>
+              <div>
+                <strong>Innings:</strong> {liveData.currentInnings}/2
+              </div>
+              <div>
+                <strong>Status:</strong> {
+                  liveData.status === 'inProgress' ? 'In Progress' : 
+                  liveData.status === 'innings1Complete' ? 'Innings Break' : 
+                  liveData.status === 'completed' ? 'Match Completed' : 'Not Started'
+                }
+              </div>
+            </div>
+
+            {/* ✅ DEBUG INFO (Remove later) */}
+            <div style={{ 
+              background: 'rgba(255,255,255,0.1)', 
+              padding: '10px', 
+              borderRadius: '8px',
+              marginTop: '10px',
+              fontSize: '12px'
+            }}>
+              
             </div>
           </div>
 
@@ -234,12 +350,17 @@ export default function LiveMatchView() {
               <div style={styles.statsGrid}>
                 {currentInnings.currentBatsmen.map((batsman, idx) => (
                   <div key={idx} style={styles.statBox}>
-                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{batsman.player}</div>
-                    <div style={{ fontSize: '1.5rem', margin: '10px 0' }}>
-                      {batsman.runs} ({batsman.balls})
+                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '8px' }}>
+                      {batsman.player}
                     </div>
-                    <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>
-                      SR: {batsman.strikeRate.toFixed(2)} | 4s: {batsman.fours} | 6s: {batsman.sixes}
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3b82f6', margin: '10px 0' }}>
+                      {batsman.runs}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                      Balls: {batsman.balls} | SR: {batsman.strikeRate.toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '4px' }}>
+                      4s: {batsman.fours} | 6s: {batsman.sixes}
                     </div>
                   </div>
                 ))}
@@ -252,10 +373,10 @@ export default function LiveMatchView() {
             <div style={styles.infoCard}>
               <h3 style={{ marginTop: 0 }}>⚾ Current Bowler</h3>
               <div style={styles.statBox}>
-                <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '8px' }}>
                   {currentInnings.currentBowler.player}
                 </div>
-                <div style={{ fontSize: '1.5rem', margin: '10px 0' }}>
+                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ef4444', margin: '10px 0' }}>
                   {currentInnings.currentBowler.wickets}/{currentInnings.currentBowler.runs}
                 </div>
                 <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>
@@ -267,36 +388,51 @@ export default function LiveMatchView() {
 
           {/* Ball-by-Ball Commentary */}
           <div style={styles.commentaryBox}>
-            <h3 style={{ marginTop: 0 }}>💬 Ball-by-Ball Commentary</h3>
+            <h3 style={{ marginTop: 0, marginBottom: '15px' }}>💬 Ball-by-Ball Commentary</h3>
             {lastBalls.length === 0 ? (
-              <p style={{ textAlign: 'center', color: '#6b7280' }}>No balls bowled yet</p>
+              <p style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>
+                No balls bowled yet. Waiting for first ball...
+              </p>
             ) : (
               lastBalls.map((ball, idx) => (
                 <div key={idx} style={styles.ballItem}>
-                  <div>
-                    <span style={{ fontWeight: 'bold', marginRight: '10px' }}>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ 
+                      fontWeight: 'bold', 
+                      marginRight: '12px',
+                      color: '#3b82f6'
+                    }}>
                       Over {ball.over}
                     </span>
-                    <span>{ball.commentary}</span>
+                    <span style={{ color: '#1f2937' }}>{ball.commentary}</span>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                      {ball.batsman} • {ball.bowler}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     {ball.isWicket && (
                       <span style={{
                         background: '#ef4444',
                         color: 'white',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
                         fontSize: '12px',
+                        fontWeight: 'bold',
                       }}>
                         WICKET
                       </span>
                     )}
                     <span style={{
-                      background: ball.runs >= 4 ? '#10b981' : '#3b82f6',
+                      background: ball.runs >= 6 ? '#8b5cf6' :
+                                 ball.runs === 4 ? '#3b82f6' : 
+                                 ball.runs > 0 ? '#10b981' : '#6b7280',
                       color: 'white',
-                      padding: '4px 12px',
+                      padding: '8px 14px',
                       borderRadius: '50%',
                       fontWeight: 'bold',
+                      fontSize: '16px',
+                      minWidth: '40px',
+                      textAlign: 'center',
                     }}>
                       {ball.runs}
                     </span>
@@ -305,6 +441,18 @@ export default function LiveMatchView() {
               ))
             )}
           </div>
+        </div>
+
+        {/* Auto-refresh Indicator */}
+        <div style={styles.refreshIndicator}>
+          <span style={{ 
+            width: '8px', 
+            height: '8px', 
+            borderRadius: '50%', 
+            background: 'white',
+            display: 'inline-block',
+          }}></span>
+          Auto-updating every 3s
         </div>
       </div>
       <Footer />
