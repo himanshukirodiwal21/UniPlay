@@ -119,7 +119,75 @@ export default function ScorerDashboard() {
       }
 
       const data = await response.json();
-      setMatches(data.data || []);
+      
+      // ✅ For live and completed matches, fetch live data to get accurate scores
+      if ((activeTab === "live" || activeTab === "completed") && data.data?.length > 0) {
+        const matchesWithLiveData = await Promise.all(
+          data.data.map(async (match) => {
+            try {
+              const liveResponse = await fetch(`${BACKEND_URL}/api/v1/live-matches/${match._id}`);
+              const liveData = await liveResponse.json();
+              
+              if (liveData.success && liveData.data.innings) {
+                const innings = liveData.data.innings;
+                
+                // Get team scores from innings data
+                const getTeamScore = (teamId) => {
+                  // Check current innings
+                  const currentInnings = innings[liveData.data.currentInnings - 1];
+                  if (currentInnings?.battingTeam?._id?.toString() === teamId?.toString()) {
+                    return {
+                      score: currentInnings.score || 0,
+                      wickets: currentInnings.wickets || 0,
+                      overs: currentInnings.overs || 0,
+                    };
+                  }
+                  
+                  // Check first innings
+                  if (innings[0]?.battingTeam?._id?.toString() === teamId?.toString()) {
+                    return {
+                      score: innings[0].score || 0,
+                      wickets: innings[0].wickets || 0,
+                      overs: innings[0].overs || 0,
+                    };
+                  }
+                  
+                  // Check second innings
+                  if (innings[1]?.battingTeam?._id?.toString() === teamId?.toString()) {
+                    return {
+                      score: innings[1].score || 0,
+                      wickets: innings[1].wickets || 0,
+                      overs: innings[1].overs || 0,
+                    };
+                  }
+                  
+                  return { score: 0, wickets: 0, overs: 0 };
+                };
+
+                const teamAScore = getTeamScore(match.teamA?._id);
+                const teamBScore = getTeamScore(match.teamB?._id);
+
+                return {
+                  ...match,
+                  scoreA: teamAScore.score,
+                  wicketsA: teamAScore.wickets,
+                  oversA: teamAScore.overs,
+                  scoreB: teamBScore.score,
+                  wicketsB: teamBScore.wickets,
+                  oversB: teamBScore.overs,
+                };
+              }
+              return match;
+            } catch (err) {
+              console.error(`Error fetching live data for match ${match._id}:`, err);
+              return match;
+            }
+          })
+        );
+        setMatches(matchesWithLiveData);
+      } else {
+        setMatches(data.data || []);
+      }
     } catch (err) {
       console.error("❌ Fetch Error:", err);
       setError(
@@ -869,7 +937,9 @@ export default function ScorerDashboard() {
               <CheckCircle size={24} color="#f59e0b" />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
-                  Innings Complete - 10 Wickets Down!
+                  {currentInnings.overs >= totalOvers
+                    ? `Innings Complete - ${totalOvers} Overs Finished!`
+                    : "Innings Complete - 10 Wickets Down!"}
                 </div>
                 <div style={{ fontSize: "14px" }}>
                   Click "End Innings" button below to proceed to the next
@@ -878,11 +948,6 @@ export default function ScorerDashboard() {
               </div>
             </div>
           )}
-          <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
-            {currentInnings.overs >= totalOvers
-              ? `Innings Complete - ${totalOvers} Overs Finished!`
-              : "Innings Complete - 10 Wickets Down!"}
-          </div>
 
           <div style={styles.scoreDisplay}>
             <div

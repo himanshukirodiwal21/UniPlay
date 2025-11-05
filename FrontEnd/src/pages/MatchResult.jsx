@@ -4,6 +4,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
+const BACKEND_URL = 'http://localhost:8000';
+
 export default function MatchResult() {
   const { matchId } = useParams();
   const navigate = useNavigate();
@@ -11,14 +13,78 @@ export default function MatchResult() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ✅ Fetch match data
+  // ✅ Fetch match data with live scores
   useEffect(() => {
     const fetchMatch = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/v1/matches/${matchId}`);
+        const res = await fetch(`${BACKEND_URL}/api/v1/matches/${matchId}`);
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.message || "Failed to fetch match");
-        setMatch(data.data);
+        
+        let matchData = data.data;
+
+        // ✅ Fetch live data to get accurate scores (for InProgress and Completed matches)
+        if (matchData.status === "InProgress" || matchData.status === "Completed") {
+          try {
+            const liveResponse = await fetch(`${BACKEND_URL}/api/v1/live-matches/${matchId}`);
+            const liveData = await liveResponse.json();
+            
+            if (liveData.success && liveData.data.innings) {
+              const innings = liveData.data.innings;
+              
+              // Get team scores from innings data
+              const getTeamScore = (teamId) => {
+                // Check current innings
+                const currentInnings = innings[liveData.data.currentInnings - 1];
+                if (currentInnings?.battingTeam?._id?.toString() === teamId?.toString()) {
+                  return {
+                    score: currentInnings.score || 0,
+                    wickets: currentInnings.wickets || 0,
+                    overs: currentInnings.overs || 0,
+                  };
+                }
+                
+                // Check first innings
+                if (innings[0]?.battingTeam?._id?.toString() === teamId?.toString()) {
+                  return {
+                    score: innings[0].score || 0,
+                    wickets: innings[0].wickets || 0,
+                    overs: innings[0].overs || 0,
+                  };
+                }
+                
+                // Check second innings
+                if (innings[1]?.battingTeam?._id?.toString() === teamId?.toString()) {
+                  return {
+                    score: innings[1].score || 0,
+                    wickets: innings[1].wickets || 0,
+                    overs: innings[1].overs || 0,
+                  };
+                }
+                
+                return { score: 0, wickets: 0, overs: 0 };
+              };
+
+              const teamAScore = getTeamScore(matchData.teamA?._id);
+              const teamBScore = getTeamScore(matchData.teamB?._id);
+
+              matchData = {
+                ...matchData,
+                scoreA: teamAScore.score,
+                wicketsA: teamAScore.wickets,
+                oversA: teamAScore.overs,
+                scoreB: teamBScore.score,
+                wicketsB: teamBScore.wickets,
+                oversB: teamBScore.overs,
+              };
+            }
+          } catch (liveErr) {
+            console.error("Error fetching live data:", liveErr);
+            // Continue with basic match data
+          }
+        }
+
+        setMatch(matchData);
       } catch (err) {
         console.error("❌ Error fetching match:", err);
         setError(err.message);
@@ -26,8 +92,20 @@ export default function MatchResult() {
         setLoading(false);
       }
     };
-    if (matchId) fetchMatch();
-  }, [matchId]);
+
+    if (matchId) {
+      fetchMatch();
+      
+      // Auto-refresh for InProgress matches
+      const interval = setInterval(() => {
+        if (match?.status === "InProgress") {
+          fetchMatch();
+        }
+      }, 5000); // Refresh every 5 seconds for live matches
+
+      return () => clearInterval(interval);
+    }
+  }, [matchId, match?.status]);
 
   if (loading)
     return (
@@ -77,7 +155,7 @@ export default function MatchResult() {
       </>
     );
 
-  // ✅ Extract data safely
+  // ✅ Extract data safely with live scores
   const teamAName = match?.teamA?.teamName || "Team A";
   const teamBName = match?.teamB?.teamName || "Team B";
   const winnerName = match?.winner?.teamName || "TBD";
@@ -85,11 +163,14 @@ export default function MatchResult() {
   const venue = match?.venue || "Not specified";
   const stage = match?.stage || "N/A";
 
-  // ✅ Directly from backend
+  // ✅ Use live scores
   const scoreA = match?.scoreA ?? 0;
+  const wicketsA = match?.wicketsA ?? 0;
+  const oversA = match?.oversA ?? 0;
+  
   const scoreB = match?.scoreB ?? 0;
-  const overs = match?.overs ?? 0;
-  const wickets = match?.wickets ?? 0;
+  const wicketsB = match?.wicketsB ?? 0;
+  const oversB = match?.oversB ?? 0;
 
   return (
     <>
@@ -102,6 +183,15 @@ export default function MatchResult() {
           color: "#fff",
         }}
       >
+        <style>
+          {`
+            @keyframes pulse {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.7; }
+            }
+          `}
+        </style>
+
         <div style={{ maxWidth: "800px", margin: "0 auto", padding: "40px 20px" }}>
           {/* 🏆 Winner / Status Banner */}
           <div
@@ -109,6 +199,8 @@ export default function MatchResult() {
               background:
                 status === "Completed"
                   ? "linear-gradient(135deg, #16a34a, #22c55e)"
+                  : status === "InProgress"
+                  ? "linear-gradient(135deg, #dc2626, #ef4444)"
                   : "linear-gradient(135deg, #3b82f6, #60a5fa)",
               padding: "25px",
               borderRadius: "12px",
@@ -117,12 +209,27 @@ export default function MatchResult() {
               fontSize: "1.8rem",
               fontWeight: "bold",
               boxShadow: "0 8px 20px rgba(0,0,0,0.3)",
+              position: "relative",
             }}
           >
+            {status === "InProgress" && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "15px",
+                  right: "15px",
+                  width: "12px",
+                  height: "12px",
+                  borderRadius: "50%",
+                  background: "#fff",
+                  animation: "pulse 2s infinite",
+                }}
+              />
+            )}
             {status === "Completed"
               ? `🏆 ${winnerName} Won the Match!`
               : status === "InProgress"
-              ? `🔥 Match in Progress: ${teamAName} vs ${teamBName}`
+              ? `🔴 LIVE: ${teamAName} vs ${teamBName}`
               : `📅 Upcoming Match: ${teamAName} vs ${teamBName}`}
           </div>
 
@@ -145,6 +252,17 @@ export default function MatchResult() {
             </p>
             <p>
               <strong>📊 Status:</strong> {status}
+              {status === "InProgress" && (
+                <span
+                  style={{
+                    marginLeft: "10px",
+                    color: "#dc2626",
+                    fontWeight: "bold",
+                  }}
+                >
+                  (Updates every 5s)
+                </span>
+              )}
             </p>
           </div>
 
@@ -168,9 +286,11 @@ export default function MatchResult() {
             >
               <h3 style={{ marginBottom: "10px" }}>{teamAName}</h3>
               <p style={{ fontSize: "2rem", fontWeight: "bold" }}>
-                {scoreA}/{wickets}
+                {scoreA}/{wicketsA}
               </p>
-              <p>Overs: {overs}</p>
+              <p style={{ fontSize: "1rem", color: "#64748b" }}>
+                Overs: {oversA}
+              </p>
             </div>
 
             {/* Team B */}
@@ -186,9 +306,11 @@ export default function MatchResult() {
             >
               <h3 style={{ marginBottom: "10px" }}>{teamBName}</h3>
               <p style={{ fontSize: "2rem", fontWeight: "bold" }}>
-                {scoreB}/{wickets}
+                {scoreB}/{wicketsB}
               </p>
-              <p>Overs: {overs}</p>
+              <p style={{ fontSize: "1rem", color: "#64748b" }}>
+                Overs: {oversB}
+              </p>
             </div>
           </div>
 
@@ -207,6 +329,8 @@ export default function MatchResult() {
               fontWeight: "600",
               width: "100%",
               cursor: "pointer",
+              border: "none",
+              fontSize: "1rem",
             }}
           >
             ← Back to Matches

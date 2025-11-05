@@ -269,8 +269,8 @@ export default function EventMatches() {
       const data = await response.json();
       console.log(`📊 Fetched ${data.data?.length || 0} ${activeTab} matches`);
 
-      // ✅ For live matches, fetch live data to get accurate scores
-      if (activeTab === "live" && data.data?.length > 0) {
+      // ✅ For live and completed matches, fetch live data to get accurate scores
+      if ((activeTab === "live" || activeTab === "completed") && data.data?.length > 0) {
         const matchesWithLiveData = await Promise.all(
           data.data.map(async (match) => {
             try {
