@@ -1,6 +1,6 @@
 // src/pages/EventMatches.jsx
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
@@ -8,6 +8,9 @@ const BACKEND_URL = 'http://localhost:8000';
 
 export default function EventMatches() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const event = location.state?.event; // Get event from navigation state
+  
   const [activeTab, setActiveTab] = useState("upcoming");
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -216,9 +219,20 @@ export default function EventMatches() {
       fontSize: "12px",
       fontWeight: "bold",
     },
+    backButton: {
+      background: "#6b7280",
+      color: "white",
+      padding: "10px 20px",
+      borderRadius: "8px",
+      border: "none",
+      cursor: "pointer",
+      marginBottom: "20px",
+      fontSize: "14px",
+      fontWeight: "500",
+    },
   };
 
-  // ✅ Update current time every second for countdown
+  // Update current time every second for countdown
   useEffect(() => {
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date());
@@ -227,8 +241,14 @@ export default function EventMatches() {
     return () => clearInterval(timeInterval);
   }, []);
 
-  // ✅ Fetch matches when tab changes + Auto-refresh
+  // Fetch matches when tab changes + Auto-refresh
   useEffect(() => {
+    if (!event?._id) {
+      setError("No event selected. Please go back and select an event.");
+      setLoading(false);
+      return;
+    }
+
     fetchMatches();
     
     const interval = setInterval(() => {
@@ -236,9 +256,11 @@ export default function EventMatches() {
     }, activeTab === "live" ? 5000 : 30000);
 
     return () => clearInterval(interval);
-  }, [activeTab]);
+  }, [activeTab, event?._id]);
 
   const fetchMatches = async () => {
+    if (!event?._id) return;
+
     try {
       if (matches.length === 0) {
         setLoading(true);
@@ -252,7 +274,8 @@ export default function EventMatches() {
       };
 
       const status = statusMap[activeTab];
-      const url = `${BACKEND_URL}/api/v1/matches?status=${status}`;
+      // Add event filter to the URL
+      const url = `${BACKEND_URL}/api/v1/matches?status=${status}&event=${event._id}`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -267,8 +290,10 @@ export default function EventMatches() {
       }
 
       const data = await response.json();
-      console.log(`📊 Fetched ${data.data?.length || 0} ${activeTab} matches`);
+      console.log(`📊 Fetched ${data.data?.length || 0} ${activeTab} matches for event ${event.name}`);
 
+      // For live matches, fetch live data to get accurate scores
+      if (activeTab === "live" && data.data?.length > 0) {
       // ✅ For live and completed matches, fetch live data to get accurate scores
       if ((activeTab === "live" || activeTab === "completed") && data.data?.length > 0) {
         const matchesWithLiveData = await Promise.all(
@@ -278,10 +303,8 @@ export default function EventMatches() {
               const liveData = await liveResponse.json();
               
               if (liveData.success) {
-                // Extract scores from live data
                 const currentInnings = liveData.data.innings[liveData.data.currentInnings - 1];
                 
-                // Get team scores
                 const getTeamScore = (teamId) => {
                   if (currentInnings?.battingTeam?._id?.toString() === teamId?.toString()) {
                     return {
@@ -342,7 +365,6 @@ export default function EventMatches() {
     }
   };
 
-  // ✅ Calculate time remaining for upcoming matches
   const getTimeRemaining = (scheduledTime) => {
     const matchTime = new Date(scheduledTime);
     const now = currentTime;
@@ -419,15 +441,22 @@ export default function EventMatches() {
       return (
         <div style={styles.errorBox}>
           <strong>Error:</strong> {error}
+          <br />
+          <button 
+            onClick={() => navigate(-1)} 
+            style={{...styles.backButton, marginTop: "10px"}}
+          >
+            Go Back
+          </button>
         </div>
       );
     }
 
     if (!matches.length) {
       const emptyMessages = {
-        live: { icon: "🏏", text: "No live matches at the moment" },
-        upcoming: { icon: "📅", text: "No upcoming matches scheduled" },
-        completed: { icon: "🏆", text: "No completed matches yet" },
+        live: { icon: "🏏", text: `No live matches for ${event?.name || 'this event'}` },
+        upcoming: { icon: "📅", text: `No upcoming matches for ${event?.name || 'this event'}` },
+        completed: { icon: "🏆", text: `No completed matches for ${event?.name || 'this event'} yet` },
       };
 
       const message = emptyMessages[activeTab];
@@ -474,7 +503,6 @@ export default function EventMatches() {
             {isCompleted && <span style={styles.completedBadge}>✅ Completed</span>}
           </div>
 
-          {/* Score Display for Live and Completed Matches */}
           {(isLive || isCompleted) && (
             <>
               <div style={styles.scoreContainer}>
@@ -534,7 +562,6 @@ export default function EventMatches() {
             </>
           )}
 
-          {/* Upcoming Match Info */}
           {match.status === "Scheduled" && (
             <>
               <div style={styles.matchInfo}>
@@ -580,8 +607,15 @@ export default function EventMatches() {
         )}
 
         <div style={styles.container}>
+          <button 
+            onClick={() => navigate(-1)} 
+            style={styles.backButton}
+          >
+            ← Back to Event
+          </button>
+
           <div style={styles.header}>
-            <h1 style={styles.title}>🏏 Match Center</h1>
+            <h1 style={styles.title}>🏏 {event?.name || 'Event'} - Match Center</h1>
             <p style={styles.subtitle}>
               {activeTab === "live" ? "Live updates every 5 seconds" : "Auto-updates every 30 seconds"}
             </p>
