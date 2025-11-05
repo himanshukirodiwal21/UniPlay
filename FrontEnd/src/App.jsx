@@ -18,6 +18,7 @@ import MatchResult from "./pages/MatchResult";
 import ScorerDashboard from "./pages/ScorerDashboard";
 import RegisteredTeams from './pages/RegisteredTeams';
 import PointsTable from "./pages/PointsTable";
+import PlayerProfile from './pages/PlayerProfile';
 
 
 
@@ -48,6 +49,7 @@ function App() {
 
       <Route path="/registered-teams/:eventId" element={<RegisteredTeams />} />
       <Route path="/points-table" element={<PointsTable />} />
+      <Route path="/players/:id" element={<PlayerProfile />} />
 
       
 

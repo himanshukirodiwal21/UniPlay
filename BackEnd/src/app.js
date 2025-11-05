@@ -23,6 +23,7 @@ import adminRouter from './routes/admin.routes.js';
 import teamRegistrationRoutes from "./routes/teamRegistration.routes.js";
 import matchRoutes from "./routes/match.routes.js";
 import liveMatchRoutes from "./routes/liveMatch.routes.js"; // ✨ NEW
+import playerRouter from "./routes/player.router.js";
 
 // ✅ Routes declaration
 app.use("/api/v1/users", userRouter);
@@ -31,6 +32,7 @@ app.use("/api/v1/admin", adminRouter);
 app.use("/api/v1/team-registrations", teamRegistrationRoutes);
 app.use("/api/v1/matches", matchRoutes);
 app.use("/api/v1/live-matches", liveMatchRoutes); // ✨ NEW LIVE MATCH ROUTE
+app.use("/api/v1/players", playerRouter);
 
 // ✅ Health check route
 app.get("/", (req, res) => {

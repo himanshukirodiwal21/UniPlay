@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-// 1. Import 'useParams' to read the URL
 import { Users, Trophy, Mail, Phone, Building2, ChevronDown, ChevronUp, Search, ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom'; 
 import Header from '../components/Header';
@@ -8,8 +7,6 @@ import '../assets/RegisteredTeams.css';
 
 export default function RegisteredTeams() {
   const navigate = useNavigate();
-  
-  // 2. Get the 'eventId' from the URL parameters
   const { eventId } = useParams(); 
 
   const [teams, setTeams] = useState([]);
@@ -18,12 +15,10 @@ export default function RegisteredTeams() {
   const [expandedTeam, setExpandedTeam] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 3. Update useEffect to run when 'eventId' changes
   useEffect(() => {
     if (eventId) {
       fetchTeams();
     } else {
-      // Handle cases where no eventId is in the URL
       setError("No Event ID provided in the URL.");
       setLoading(false);
     }
@@ -31,8 +26,7 @@ export default function RegisteredTeams() {
 
   const fetchTeams = async () => {
     try {
-      setLoading(true); // Ensure loading state is set on fetch
-      // 4. Change the fetch URL to the event-specific endpoint
+      setLoading(true); 
       const response = await fetch(`http://localhost:8000/api/v1/team-registrations/event/${eventId}`);
       
       if (!response.ok) throw new Error('Failed to fetch teams for this event');
@@ -49,6 +43,14 @@ export default function RegisteredTeams() {
     setExpandedTeam(expandedTeam === teamId ? null : teamId);
   };
 
+  const handlePlayerClick = (playerId) => {
+    if (playerId) {
+      navigate(`/players/${playerId}`);
+    } else {
+      console.error("Player ID is missing, cannot navigate.");
+    }
+  };
+
   const filteredTeams = teams.filter(team => {
     const matchesSearch = team.teamName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          team.captainName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -56,6 +58,7 @@ export default function RegisteredTeams() {
     return matchesSearch;
   });
 
+  // ... (loading and error JSX remains the same) ...
   if (loading) {
     return (
       <>
@@ -90,6 +93,7 @@ export default function RegisteredTeams() {
     <>
       <Header />
       <div className="teams-container">
+        {/* ... (hero section remains the same) ... */}
         <div className="teams-hero">
           <button onClick={() => navigate(-1)} className="back-button">
             <ArrowLeft size={20} />
@@ -97,7 +101,6 @@ export default function RegisteredTeams() {
           </button>
           <Trophy className="hero-icon" size={48} />
           <h1 className="hero-title">Registered Teams</h1>
-          {/* Subtitle is more specific now */}
           <p className="hero-subtitle">Teams registered for this event</p>
           <div className="teams-count">
             <span className="count-badge">{filteredTeams.length}</span>
@@ -106,7 +109,7 @@ export default function RegisteredTeams() {
         </div>
 
         <div className="teams-main">
-          {/* Search and Filter */}
+          {/* ... (search section remains the same) ... */}
           <div className="controls-section">
             <div className="search-box">
               <Search size={20} />
@@ -122,17 +125,17 @@ export default function RegisteredTeams() {
 
           {/* Teams List */}
           {filteredTeams.length === 0 ? (
+            // ... (empty state remains the same) ...
             <div className="empty-state">
               <Users size={64} />
               <h3>No teams found</h3>
-              {/* 5. Updated empty state message */}
               <p>No teams have registered for this event yet, or none match your search.</p>
             </div>
           ) : (
             <div className="teams-grid">
               {filteredTeams.map((team) => (
                 <div key={team._id || team.id} className="team-card">
-                  {/* ... rest of your card JSX is correct and remains the same ... */}
+                  {/* ... (team header remains the same) ... */}
                   <div className="team-header" onClick={() => toggleTeamExpansion(team._id || team.id)}>
                     <div className="team-header-content">
                       <Trophy className="team-icon" size={24} />
@@ -149,8 +152,8 @@ export default function RegisteredTeams() {
                       )}
                     </button>
                   </div>
-
-                  {/* Captain Details - Always Visible */}
+                  
+                  {/* ... (captain summary remains the same) ... */}
                   <div className="captain-summary">
                     <h3 className="section-subtitle">
                       <Users size={18} />
@@ -212,35 +215,48 @@ export default function RegisteredTeams() {
                             </tr>
                           </thead>
                           <tbody>
-                            {team.players?.map((player, index) => (
-                              <tr key={index} className={`
-                                ${player.isCaptain ? 'captain-row' : ''}
-                                ${player.isViceCaptain ? 'vice-captain-row' : ''}
-                              `}>
-                                <td className="player-number">{index + 1}</td>
-                                <td className="player-name">
-                                  {player.name}
-                                  {player.isCaptain && <span className="badge badge-captain">C</span>}
-                                  {player.isViceCaptain && <span className="badge badge-vice">VC</span>}
-                                </td>
-                                <td className="player-role">
-                                  <span className={`role-badge role-${player.role?.toLowerCase().replace(/[^a-z]/g, '')}`}>
-                                    {player.role}
-                                  </span>
-                                </td>
-                                <td>{player.year}</td>
-                                <td>
-                                  {player.isCaptain && <span className="position-label">Captain</span>}
-                                  {player.isViceCaptain && <span className="position-label">Vice-Captain</span>}
-                                  {!player.isCaptain && !player.isViceCaptain && <span className="position-label">Player</span>}
-                                </td>
-                              </tr>
-                            ))}
+                            {team.players?.map((player, index) => {
+                              
+                              // ✅ THIS IS THE ONLY CHANGE
+                              // This will show you what 'player' object you're clicking on.
+                              console.log("Player object from team:", player); 
+
+                              return (
+                                <tr key={player._id || index} className={`
+                                  ${player.isCaptain ? 'captain-row' : ''}
+                                  ${player.isViceCaptain ? 'vice-captain-row' : ''}
+                                `}>
+                                  <td className="player-number">{index + 1}</td>
+                                  
+                                  <td 
+                                    className="player-name player-link"
+                                    onClick={() => handlePlayerClick(player._id)}
+                                    title={`View ${player.name}'s profile`}
+                                  >
+                                    {player.name}
+                                    {player.isCaptain && <span className="badge badge-captain">C</span>}
+                                    {player.isViceCaptain && <span className="badge badge-vice">VC</span>}
+                                  </td>
+                                  
+                                  <td className="player-role">
+                                    <span className={`role-badge role-${player.role?.toLowerCase().replace(/[^a-z]/g, '')}`}>
+                                      {player.role}
+                                    </span>
+                                  </td>
+                                  <td>{player.year}</td>
+                                  <td>
+                                    {player.isCaptain && <span className="position-label">Captain</span>}
+                                    {player.isViceCaptain && <span className="position-label">Vice-Captain</span>}
+                                    {!player.isCaptain && !player.isViceCaptain && <span className="position-label">Player</span>}
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
 
-                      {/* Team Statistics */}
+                      {/* ... (team stats section remains the same) ... */}
                       <div className="team-stats">
                         <h4 className="stats-title">Team Composition</h4>
                         <div className="stats-grid">
