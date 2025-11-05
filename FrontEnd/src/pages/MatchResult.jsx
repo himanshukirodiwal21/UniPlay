@@ -1,100 +1,216 @@
 // src/pages/MatchResult.jsx
-import React from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 export default function MatchResult() {
-  const location = useLocation();
-  const navigate = useNavigate();
   const { matchId } = useParams();
-  const match = location.state?.match;
+  const navigate = useNavigate();
+  const [match, setMatch] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const styles = {
-    pageContainer: {
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #4b5563 0%, #6b7280 50%, #9ca3af 100%)',
-      paddingBottom: '40px',
-    },
-    container: {
-      maxWidth: '800px',
-      margin: '0 auto',
-      padding: '40px 20px',
-    },
-    winnerBanner: {
-      background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
-      color: 'white',
-      padding: '25px',
-      borderRadius: '12px',
-      textAlign: 'center',
-      marginBottom: '25px',
-      fontSize: '1.8rem',
-      fontWeight: 'bold',
-      boxShadow: '0 8px 20px rgba(0,0,0,0.3)',
-    },
-    scoreDisplay: {
-      background: '#f8f9fa',
-      padding: '25px',
-      borderRadius: '12px',
-      marginBottom: '20px',
-      borderLeft: '6px solid #667eea',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    },
-    teamName: {
-      fontWeight: 'bold',
-      marginBottom: '8px',
-      fontSize: '16px',
-      color: '#374151',
-    },
-    scoreLarge: {
-      fontSize: '2.5rem',
-      fontWeight: 'bold',
-      color: '#1f2937',
-    },
-    motmCard: {
-      background: '#fff3cd',
-      borderLeft: '5px solid #f59e0b',
-      padding: '20px',
-      borderRadius: '10px',
-      marginTop: '20px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    },
-    motmTitle: {
-      fontWeight: 'bold',
-      marginBottom: '8px',
-      fontSize: '14px',
-      color: '#92400e',
-    },
-    motmDetails: {
-      fontSize: '1.3rem',
-      fontWeight: '600',
-      color: '#78350f',
-    },
-  };
+  // ✅ Fetch match data
+  useEffect(() => {
+    const fetchMatch = async () => {
+      try {
+        const res = await fetch(`http://localhost:8000/api/v1/matches/${matchId}`);
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || "Failed to fetch match");
+        setMatch(data.data);
+      } catch (err) {
+        console.error("❌ Error fetching match:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (matchId) fetchMatch();
+  }, [matchId]);
+
+  if (loading)
+    return (
+      <>
+        <Header />
+        <div style={{ color: "#fff", textAlign: "center", padding: "2rem" }}>
+          Loading match data...
+        </div>
+        <Footer />
+      </>
+    );
+
+  if (error)
+    return (
+      <>
+        <Header />
+        <div style={{ color: "#fff", textAlign: "center", padding: "2rem" }}>
+          ❌ {error}
+          <br />
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              marginTop: "1rem",
+              background: "#374151",
+              color: "#fff",
+              border: "none",
+              borderRadius: "6px",
+              padding: "10px 16px",
+              cursor: "pointer",
+            }}
+          >
+            ← Go Back
+          </button>
+        </div>
+        <Footer />
+      </>
+    );
+
+  if (!match)
+    return (
+      <>
+        <Header />
+        <div style={{ color: "#fff", textAlign: "center", padding: "2rem" }}>
+          No match data found.
+        </div>
+        <Footer />
+      </>
+    );
+
+  // ✅ Extract data safely
+  const teamAName = match?.teamA?.teamName || "Team A";
+  const teamBName = match?.teamB?.teamName || "Team B";
+  const winnerName = match?.winner?.teamName || "TBD";
+  const status = match?.status || "Scheduled";
+  const venue = match?.venue || "Not specified";
+  const stage = match?.stage || "N/A";
+
+  // ✅ Directly from backend
+  const scoreA = match?.scoreA ?? 0;
+  const scoreB = match?.scoreB ?? 0;
+  const overs = match?.overs ?? 0;
+  const wickets = match?.wickets ?? 0;
 
   return (
     <>
       <Header />
-      <div style={styles.pageContainer}>
-        <div style={styles.container}>
-          <div style={styles.winnerBanner}>
-            🏆 CSE XI Won by 25 runs!
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #374151, #6b7280)",
+          paddingBottom: "40px",
+          color: "#fff",
+        }}
+      >
+        <div style={{ maxWidth: "800px", margin: "0 auto", padding: "40px 20px" }}>
+          {/* 🏆 Winner / Status Banner */}
+          <div
+            style={{
+              background:
+                status === "Completed"
+                  ? "linear-gradient(135deg, #16a34a, #22c55e)"
+                  : "linear-gradient(135deg, #3b82f6, #60a5fa)",
+              padding: "25px",
+              borderRadius: "12px",
+              textAlign: "center",
+              marginBottom: "25px",
+              fontSize: "1.8rem",
+              fontWeight: "bold",
+              boxShadow: "0 8px 20px rgba(0,0,0,0.3)",
+            }}
+          >
+            {status === "Completed"
+              ? `🏆 ${winnerName} Won the Match!`
+              : status === "InProgress"
+              ? `🔥 Match in Progress: ${teamAName} vs ${teamBName}`
+              : `📅 Upcoming Match: ${teamAName} vs ${teamBName}`}
           </div>
 
-          <div style={styles.scoreDisplay}>
-            <div style={styles.teamName}>CSE XI</div>
-            <div style={styles.scoreLarge}>175/7 (20)</div>
+          {/* 🏟 Venue + Info */}
+          <div
+            style={{
+              background: "#f8f9fa",
+              color: "#111",
+              padding: "20px",
+              borderRadius: "10px",
+              marginBottom: "20px",
+              textAlign: "center",
+            }}
+          >
+            <p>
+              <strong>🏟 Venue:</strong> {venue}
+            </p>
+            <p>
+              <strong>🎯 Stage:</strong> {stage}
+            </p>
+            <p>
+              <strong>📊 Status:</strong> {status}
+            </p>
           </div>
 
-          <div style={styles.scoreDisplay}>
-            <div style={styles.teamName}>ECE Tigers</div>
-            <div style={styles.scoreLarge}>150/10 (18.4)</div>
+          {/* 🏏 Team Scores */}
+          <div
+            style={{
+              display: "grid",
+              gap: "20px",
+            }}
+          >
+            {/* Team A */}
+            <div
+              style={{
+                background: "#f8f9fa",
+                color: "#000",
+                padding: "20px",
+                borderRadius: "10px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                borderLeft: "6px solid #3b82f6",
+              }}
+            >
+              <h3 style={{ marginBottom: "10px" }}>{teamAName}</h3>
+              <p style={{ fontSize: "2rem", fontWeight: "bold" }}>
+                {scoreA}/{wickets}
+              </p>
+              <p>Overs: {overs}</p>
+            </div>
+
+            {/* Team B */}
+            <div
+              style={{
+                background: "#f8f9fa",
+                color: "#000",
+                padding: "20px",
+                borderRadius: "10px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                borderLeft: "6px solid #10b981",
+              }}
+            >
+              <h3 style={{ marginBottom: "10px" }}>{teamBName}</h3>
+              <p style={{ fontSize: "2rem", fontWeight: "bold" }}>
+                {scoreB}/{wickets}
+              </p>
+              <p>Overs: {overs}</p>
+            </div>
           </div>
 
-          <div style={styles.motmCard}>
-            <div style={styles.motmTitle}>🌟 Man of the Match</div>
-            <div style={styles.motmDetails}>Ravi - 75 runs (45 balls)</div>
-          </div>
+          {/* 🔙 Back Button */}
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              display: "block",
+              textAlign: "center",
+              background: "#374151",
+              color: "#fff",
+              padding: "12px 18px",
+              borderRadius: "8px",
+              marginTop: "30px",
+              textDecoration: "none",
+              fontWeight: "600",
+              width: "100%",
+              cursor: "pointer",
+            }}
+          >
+            ← Back to Matches
+          </button>
         </div>
       </div>
       <Footer />

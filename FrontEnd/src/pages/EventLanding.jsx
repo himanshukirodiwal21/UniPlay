@@ -188,6 +188,14 @@ export default function EventLanding() {
               Scorer Login
             </button>
 
+            {/* points table */}
+            <button 
+              onClick={() => navigate('/points-table', { state: { event } })}
+              className="btn btn-primary"
+            >
+              Points Table
+            </button>
+
             {/* View Registered Teams */}
             <button
               onClick={() => navigate(`/registered-teams/${event?._id}`)}
