@@ -292,9 +292,7 @@ export default function EventMatches() {
       const data = await response.json();
       console.log(`📊 Fetched ${data.data?.length || 0} ${activeTab} matches for event ${event.name}`);
 
-      // For live matches, fetch live data to get accurate scores
-      if (activeTab === "live" && data.data?.length > 0) {
-      // ✅ For live and completed matches, fetch live data to get accurate scores
+      // For live and completed matches, fetch live data to get accurate scores
       if ((activeTab === "live" || activeTab === "completed") && data.data?.length > 0) {
         const matchesWithLiveData = await Promise.all(
           data.data.map(async (match) => {
@@ -306,6 +304,7 @@ export default function EventMatches() {
                 const currentInnings = liveData.data.innings[liveData.data.currentInnings - 1];
                 
                 const getTeamScore = (teamId) => {
+                  // Check current innings
                   if (currentInnings?.battingTeam?._id?.toString() === teamId?.toString()) {
                     return {
                       score: currentInnings.score || 0,
@@ -314,11 +313,21 @@ export default function EventMatches() {
                     };
                   }
                   
+                  // Check first innings
                   if (liveData.data.innings[0]?.battingTeam?._id?.toString() === teamId?.toString()) {
                     return {
                       score: liveData.data.innings[0].score || 0,
                       wickets: liveData.data.innings[0].wickets || 0,
                       overs: liveData.data.innings[0].overs || 0,
+                    };
+                  }
+                  
+                  // Check second innings if exists
+                  if (liveData.data.innings[1]?.battingTeam?._id?.toString() === teamId?.toString()) {
+                    return {
+                      score: liveData.data.innings[1].score || 0,
+                      wickets: liveData.data.innings[1].wickets || 0,
+                      overs: liveData.data.innings[1].overs || 0,
                     };
                   }
                   
