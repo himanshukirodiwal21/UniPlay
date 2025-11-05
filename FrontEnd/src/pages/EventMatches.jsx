@@ -109,15 +109,38 @@ export default function EventMatches() {
       fontSize: "12px",
       fontWeight: "bold",
     },
+    scoreContainer: {
+      display: "flex",
+      justifyContent: "space-around",
+      alignItems: "center",
+      marginBottom: "10px",
+      gap: "20px",
+    },
+    teamScore: {
+      flex: 1,
+      textAlign: "center",
+    },
+    teamScoreLabel: {
+      fontSize: "0.9rem",
+      color: "#64748b",
+      marginBottom: "8px",
+      fontWeight: "600",
+    },
     scoreLarge: {
-      fontSize: "2.5rem",
+      fontSize: "2rem",
       fontWeight: "bold",
       color: "#2c3e50",
-      marginBottom: "10px",
-      letterSpacing: "2px",
-      display: "flex",
-      alignItems: "center",
-      gap: "15px",
+      letterSpacing: "1px",
+    },
+    oversText: {
+      fontSize: "0.85rem",
+      color: "#64748b",
+      marginTop: "4px",
+    },
+    vsText: {
+      fontSize: "1.2rem",
+      color: "#94a3b8",
+      fontWeight: "bold",
     },
     liveScoreInfo: {
       color: "#e74c3c",
@@ -357,10 +380,34 @@ export default function EventMatches() {
           {/* Score Display for Live and Completed Matches */}
           {(isLive || isCompleted) && (
             <>
-              <div style={styles.scoreLarge}>
-                <span>{match.scoreA || 0}</span>
-                <span style={{ fontSize: "1.5rem", color: "#94a3b8" }}>-</span>
-                <span>{match.scoreB || 0}</span>
+              <div style={styles.scoreContainer}>
+                {/* Team A Score */}
+                <div style={styles.teamScore}>
+                  <div style={styles.teamScoreLabel}>
+                    {match.teamA?.teamName || "Team A"}
+                  </div>
+                  <div style={styles.scoreLarge}>
+                    {match.scoreA || 0}/{match.wicketsA || 0}
+                  </div>
+                  <div style={styles.oversText}>
+                    {match.oversA ? `(${match.oversA} ov)` : '(0 ov)'}
+                  </div>
+                </div>
+
+                <div style={styles.vsText}>vs</div>
+
+                {/* Team B Score */}
+                <div style={styles.teamScore}>
+                  <div style={styles.teamScoreLabel}>
+                    {match.teamB?.teamName || "Team B"}
+                  </div>
+                  <div style={styles.scoreLarge}>
+                    {match.scoreB || 0}/{match.wicketsB || 0}
+                  </div>
+                  <div style={styles.oversText}>
+                    {match.oversB ? `(${match.oversB} ov)` : '(0 ov)'}
+                  </div>
+                </div>
               </div>
 
               {/* Live Match Extra Info */}

@@ -54,8 +54,20 @@ export default function ScorerDashboard() {
 
             socket.on('innings-complete', (data) => {
                 console.log('✅ Innings complete:', data);
-                alert('Innings completed!');
+                alert('Innings completed! Starting next innings...');
                 fetchLiveMatchData();
+                // Clear batsman/bowler fields for new innings
+                setCurrentBatsman('');
+                setCurrentBowler('');
+                setLastBalls([]);
+            });
+
+            socket.on('match-complete', (data) => {
+                console.log('🏆 Match complete:', data);
+                alert('Match completed! Redirecting to dashboard...');
+                setTimeout(() => {
+                    handleBackToDashboard();
+                }, 2000);
             });
 
             return () => {
@@ -144,16 +156,70 @@ export default function ScorerDashboard() {
         alert('Redirecting to Create Match form...');
     };
 
-    const handleStartScoring = (match = null) => {
+    const handleStartScoring = async (match = null) => {
         const matchToScore = match || matches[0];
+        
+        // Check if match is already initialized
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/v1/live-matches/${matchToScore._id}`);
+            const data = await response.json();
+            
+            if (!data.success) {
+                // Match not initialized, initialize it
+                const shouldInitialize = window.confirm(
+                    'This match needs to be initialized first.\n\nDo you want to initialize it now?'
+                );
+                
+                if (shouldInitialize) {
+                    await initializeMatch(matchToScore);
+                } else {
+                    return;
+                }
+            }
+        } catch (err) {
+            console.error('Error checking match status:', err);
+        }
+        
         setCurrentMatch(matchToScore);
         setCurrentView('scoring');
+    };
+
+    const initializeMatch = async (match) => {
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/v1/live-matches`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    matchId: match._id,
+                    tossWinner: match.teamA._id, // Default to teamA, can be made dynamic
+                    choice: 'bat' // Default choice, can be made dynamic
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to initialize match');
+            }
+
+            const result = await response.json();
+            console.log('✅ Match initialized:', result);
+            alert('Match initialized successfully!');
+        } catch (err) {
+            console.error('❌ Error initializing match:', err);
+            alert(`Error initializing match: ${err.message}`);
+            throw err;
+        }
     };
 
     const handleBackToDashboard = () => {
         setCurrentView('dashboard');
         setCurrentMatch(null);
         setLiveMatchData(null);
+        setCurrentBatsman('');
+        setCurrentBowler('');
+        setLastBalls([]);
     };
 
     const handleViewStats = () => {
@@ -163,6 +229,13 @@ export default function ScorerDashboard() {
     const handleBallClick = async (value) => {
         if (!currentBatsman || !currentBowler) {
             alert('Please enter batsman and bowler names first!');
+            return;
+        }
+
+        // ✅ CHECK: Prevent scoring if innings is complete
+        const currentInnings = liveMatchData.innings[liveMatchData.currentInnings - 1];
+        if (currentInnings.wickets >= 10) {
+            alert('This innings is complete (10 wickets)!\n\nClick "End Innings" to proceed.');
             return;
         }
 
@@ -222,8 +295,62 @@ export default function ScorerDashboard() {
             // Update last balls display
             setLastBalls([value, ...lastBalls.slice(0, 5)]);
 
+            // ✅ CHECK: If wicket was just taken and now at 10 wickets
+            if (ballData.isWicket) {
+                const updatedInnings = liveMatchData.innings[liveMatchData.currentInnings - 1];
+                if ((updatedInnings.wickets + 1) >= 10) {
+                    setTimeout(() => {
+                        alert('10 wickets down! Click "End Innings" to proceed to next innings.');
+                    }, 500);
+                }
+            }
+
         } catch (err) {
             console.error('❌ Error updating ball:', err);
+            alert(`Error: ${err.message}`);
+        } finally {
+            setScoringLoading(false);
+        }
+    };
+
+    const handleEndInnings = async () => {
+        const currentInnings = liveMatchData.innings[liveMatchData.currentInnings - 1];
+        
+        if (currentInnings.wickets < 10) {
+            const confirmEnd = window.confirm(
+                `Are you sure you want to end this innings?\n\nCurrent: ${currentInnings.score}/${currentInnings.wickets} in ${currentInnings.overs} overs\n\nNote: Less than 10 wickets have fallen.`
+            );
+            if (!confirmEnd) return;
+        }
+
+        try {
+            setScoringLoading(true);
+            
+            const response = await fetch(`${BACKEND_URL}/api/v1/live-matches/${currentMatch._id}/complete-innings`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to end innings');
+            }
+
+            const result = await response.json();
+            console.log('✅ Innings ended:', result);
+
+            // Clear fields for new innings
+            setCurrentBatsman('');
+            setCurrentBowler('');
+            setLastBalls([]);
+
+            alert('Innings ended! Starting next innings...');
+            await fetchLiveMatchData();
+
+        } catch (err) {
+            console.error('❌ Error ending innings:', err);
             alert(`Error: ${err.message}`);
         } finally {
             setScoringLoading(false);
@@ -549,6 +676,23 @@ export default function ScorerDashboard() {
             transition: 'all 0.3s',
             opacity: scoringLoading ? 0.5 : 1
         },
+        endInningsBtn: {
+            width: '100%',
+            background: '#dc2626',
+            color: 'white',
+            fontWeight: 'bold',
+            padding: '16px',
+            borderRadius: '12px',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            transition: 'all 0.3s',
+            marginTop: '20px',
+            fontSize: '16px'
+        },
         lastBallsContainer: {
             background: '#f8f9fa',
             padding: '16px',
@@ -611,6 +755,17 @@ export default function ScorerDashboard() {
             padding: '16px',
             color: '#dc2626',
             textAlign: 'center'
+        },
+        warningBox: {
+            background: '#fef3c7',
+            border: '2px solid #f59e0b',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            color: '#92400e'
         }
     };
 
@@ -628,6 +783,7 @@ export default function ScorerDashboard() {
         }
 
         const currentInnings = liveMatchData.innings[liveMatchData.currentInnings - 1];
+        const isInningsComplete = currentInnings.wickets >= 10;
 
         return (
             <div style={styles.mainContent}>
@@ -639,15 +795,45 @@ export default function ScorerDashboard() {
                         {getStatusBadge('InProgress')}
                     </div>
 
+                    {/* ✅ WARNING: Innings Complete */}
+                    {isInningsComplete && (
+                        <div style={styles.warningBox}>
+                            <CheckCircle size={24} color="#f59e0b" />
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                                    Innings Complete - 10 Wickets Down!
+                                </div>
+                                <div style={{ fontSize: '14px' }}>
+                                    Click "End Innings" button below to proceed to the next innings.
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div style={styles.scoreDisplay}>
                         <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px', color: '#6b7280' }}>
-                            {currentInnings.battingTeam?.teamName || 'Batting Team'}
+                            {currentInnings.battingTeam?.teamName || 'Batting Team'} - Innings {liveMatchData.currentInnings}
                         </div>
                         <div style={styles.scoreLarge}>
                             {currentInnings.score}/{currentInnings.wickets}
                         </div>
                         <div style={{ color: '#6b7280', fontSize: '16px' }}>
                             {currentInnings.overs} overs • Run Rate: {(currentInnings.score / (currentInnings.overs || 1)).toFixed(2)}
+                        </div>
+                        {/* ✅ Wickets indicator */}
+                        <div style={{ 
+                            marginTop: '12px', 
+                            padding: '8px', 
+                            background: isInningsComplete ? '#fee2e2' : '#e0e7ff',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: isInningsComplete ? '#dc2626' : '#4f46e5'
+                        }}>
+                            {isInningsComplete 
+                                ? '⚠️ All Out - 10 Wickets Down' 
+                                : `Wickets Remaining: ${10 - currentInnings.wickets}/10`
+                            }
                         </div>
                     </div>
 
@@ -661,6 +847,7 @@ export default function ScorerDashboard() {
                                 placeholder="Enter batsman name"
                                 value={currentBatsman}
                                 onChange={(e) => setCurrentBatsman(e.target.value)}
+                                disabled={isInningsComplete}
                             />
                         </div>
                         <div style={styles.playerBox}>
@@ -671,6 +858,7 @@ export default function ScorerDashboard() {
                                 placeholder="Enter bowler name"
                                 value={currentBowler}
                                 onChange={(e) => setCurrentBowler(e.target.value)}
+                                disabled={isInningsComplete}
                             />
                         </div>
                     </div>
@@ -699,6 +887,7 @@ export default function ScorerDashboard() {
                         </div>
                     </div>
 
+                    {/* ✅ Ball Buttons - Disabled if innings complete */}
                     <div style={styles.ballButtonsGrid}>
                         {['0', '1', '2', '3', '4', '6', 'W', 'WD'].map((value) => (
                             <button
@@ -706,12 +895,14 @@ export default function ScorerDashboard() {
                                 style={{
                                     ...styles.ballButton,
                                     borderColor: value === 'W' ? '#ef4444' : '#7c3aed',
-                                    color: value === 'W' ? '#ef4444' : '#7c3aed'
+                                    color: value === 'W' ? '#ef4444' : '#7c3aed',
+                                    opacity: (scoringLoading || isInningsComplete) ? 0.5 : 1,
+                                    cursor: (scoringLoading || isInningsComplete) ? 'not-allowed' : 'pointer'
                                 }}
                                 onClick={() => handleBallClick(value)}
-                                disabled={scoringLoading}
+                                disabled={scoringLoading || isInningsComplete}
                                 onMouseEnter={(e) => {
-                                    if (!scoringLoading) {
+                                    if (!scoringLoading && !isInningsComplete) {
                                         e.target.style.background = value === 'W' ? '#ef4444' : '#7c3aed';
                                         e.target.style.color = 'white';
                                     }
@@ -731,6 +922,22 @@ export default function ScorerDashboard() {
                             ⏳ Updating score...
                         </div>
                     )}
+
+                    {/* ✅ END INNINGS BUTTON */}
+                    <button
+                        style={styles.endInningsBtn}
+                        onClick={handleEndInnings}
+                        disabled={scoringLoading}
+                        onMouseEnter={(e) => {
+                            if (!scoringLoading) e.target.style.background = '#b91c1c';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.target.style.background = '#dc2626';
+                        }}
+                    >
+                        <CheckCircle size={20} />
+                        <span>End Innings {liveMatchData.currentInnings}</span>
+                    </button>
                 </div>
             </div>
         );
@@ -814,14 +1021,20 @@ export default function ScorerDashboard() {
                                 <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
                                     {match.teamA?.teamName}
                                 </div>
-                                <div style={styles.score}>{match.scoreA || 0}</div>
+                                <div style={styles.score}>{match.scoreA || 0}/{match.wicketsA || 0}</div>
+                                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                                    ({match.oversA || 0} ov)
+                                </div>
                             </div>
                             <div style={{ fontSize: '24px', color: '#9ca3af' }}>vs</div>
                             <div style={{ textAlign: 'right' }}>
                                 <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
                                     {match.teamB?.teamName}
                                 </div>
-                                <div style={styles.score}>{match.scoreB || 0}</div>
+                                <div style={styles.score}>{match.scoreB || 0}/{match.wicketsB || 0}</div>
+                                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                                    ({match.oversB || 0} ov)
+                                </div>
                             </div>
                         </div>
                         {match.winner && (
