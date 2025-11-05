@@ -1,7 +1,10 @@
+// src/pages/EventMatches.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+
+const BACKEND_URL = 'http://localhost:8000';
 
 export default function EventMatches() {
   const navigate = useNavigate();
@@ -9,6 +12,7 @@ export default function EventMatches() {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
   const styles = {
     pageWrapper: {
@@ -22,6 +26,20 @@ export default function EventMatches() {
       maxWidth: "1200px",
       margin: "0 auto",
       padding: "40px 20px",
+    },
+    header: {
+      textAlign: "center",
+      marginBottom: "30px",
+      color: "white",
+    },
+    title: {
+      fontSize: "2.5rem",
+      fontWeight: "bold",
+      marginBottom: "10px",
+    },
+    subtitle: {
+      fontSize: "1.1rem",
+      opacity: 0.9,
     },
     tabsContainer: {
       display: "flex",
@@ -53,6 +71,7 @@ export default function EventMatches() {
       transition: "all 0.3s",
       background: "white",
       cursor: "pointer",
+      position: "relative",
     },
     matchHeader: {
       display: "flex",
@@ -91,10 +110,24 @@ export default function EventMatches() {
       fontWeight: "bold",
     },
     scoreLarge: {
-      fontSize: "1.8rem",
+      fontSize: "2.5rem",
       fontWeight: "bold",
       color: "#2c3e50",
       marginBottom: "10px",
+      letterSpacing: "2px",
+      display: "flex",
+      alignItems: "center",
+      gap: "15px",
+    },
+    liveScoreInfo: {
+      color: "#e74c3c",
+      fontSize: "14px",
+      fontWeight: "600",
+      marginTop: "8px",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      flexWrap: "wrap",
     },
     matchInfo: {
       color: "#7f8c8d",
@@ -129,112 +162,134 @@ export default function EventMatches() {
       fontSize: "18px",
       fontWeight: "600",
     },
+    refreshIndicator: {
+      position: "fixed",
+      top: "80px",
+      right: "20px",
+      background: "rgba(102, 126, 234, 0.9)",
+      color: "white",
+      padding: "8px 16px",
+      borderRadius: "20px",
+      fontSize: "12px",
+      fontWeight: "500",
+      zIndex: 1000,
+    },
+    liveIndicator: {
+      position: "absolute",
+      top: "10px",
+      left: "10px",
+      width: "10px",
+      height: "10px",
+      borderRadius: "50%",
+      background: "#e74c3c",
+      animation: "pulse 2s infinite",
+    },
   };
 
+  // ✅ Fetch matches when tab changes + Auto-refresh every 5 seconds for live tab
   useEffect(() => {
-    const fetchMatches = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // ✅ Fetch ALL matches, filter on frontend for real-time accuracy
-        const url = `http://localhost:8000/api/v1/matches`;
-
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log("📊 All Matches Data:", data.data);
-
-        // ✅ Filter matches based on current time and active tab
-        let processedMatches = data.data || [];
-        const now = new Date();
-        
-        processedMatches = processedMatches.filter(match => {
-          if (!match.scheduledTime) return false;
-          
-          const matchTime = new Date(match.scheduledTime);
-          const matchEndTime = new Date(matchTime.getTime() + 3 * 60 * 60 * 1000);
-          const isLive = now >= matchTime && now <= matchEndTime;
-          
-          // Filter based on active tab
-          if (activeTab === "live") {
-            // Show only live matches (time-based)
-            return isLive && match.status !== "Completed";
-          } else if (activeTab === "upcoming") {
-            // Show only upcoming matches (not started yet and not completed)
-            return now < matchTime && match.status !== "Completed";
-          } else if (activeTab === "completed") {
-            // Show only completed matches
-            return match.status === "Completed";
-          }
-          
-          return false;
-        });
-
-        console.log(`📊 Filtered ${processedMatches.length} matches for ${activeTab} tab`);
-        setMatches(processedMatches);
-      } catch (err) {
-        console.error("❌ Fetch Error:", err);
-
-        if (err.message.includes("Failed to fetch")) {
-          setError(
-            "Cannot connect to server. Is backend running on http://localhost:8000?"
-          );
-        } else {
-          setError(err.message);
-        }
-        setMatches([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchMatches();
     
-    // ✅ Auto-refresh every 10 seconds for ALL tabs
     const interval = setInterval(() => {
       fetchMatches();
-    }, 10000);
+    }, activeTab === "live" ? 5000 : 30000); // 5s for live, 30s for others
 
     return () => clearInterval(interval);
   }, [activeTab]);
 
-  const handleMatchClick = (match) => {
-    // ✅ Check if match is actually live (time-based)
-    const now = new Date();
-    const matchTime = new Date(match.scheduledTime);
-    const matchEndTime = new Date(matchTime.getTime() + 3 * 60 * 60 * 1000);
-    const isLive = now >= matchTime && now <= matchEndTime;
+  const fetchMatches = async () => {
+    try {
+      // Don't show loading spinner if already have data
+      if (matches.length === 0) {
+        setLoading(true);
+      }
+      setError(null);
 
-    if (isLive || match.status === "InProgress") {
-      navigate(`/live-match/${match._id}`, { state: { match } });
-    } else if (match.status === "Completed") {
-      navigate(`/match-result/${match._id}`, { state: { match } });
-    } else if (match.status === "Scheduled") {
-      // ✅ Check if match is starting soon (within 15 minutes)
-      const timeDiff = matchTime - now;
-      const minutesUntilStart = Math.floor(timeDiff / (1000 * 60));
-      
-      if (minutesUntilStart <= 15 && minutesUntilStart >= 0) {
-        alert(`Match starting in ${minutesUntilStart} minutes! 🏏`);
+      const statusMap = {
+        live: "InProgress",
+        upcoming: "Scheduled",
+        completed: "Completed",
+      };
+
+      const status = statusMap[activeTab];
+      const url = `${BACKEND_URL}/api/v1/matches?status=${status}`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log(`📊 Fetched ${data.data?.length || 0} ${activeTab} matches`);
+
+      setMatches(data.data || []);
+      setLastUpdate(new Date());
+    } catch (err) {
+      console.error("❌ Fetch Error:", err);
+
+      if (err.message.includes("Failed to fetch")) {
+        setError("Cannot connect to server. Is backend running?");
       } else {
-        alert("Match has not started yet!");
+        setError(err.message);
+      }
+      setMatches([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMatchClick = async (match) => {
+    if (activeTab === "live") {
+      // Check if live match is initialized
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/v1/live-matches/${match._id}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          // Live match exists, navigate to viewer
+          navigate(`/live-match/${match._id}`, { state: { match } });
+        } else {
+          // Not initialized yet, ask to initialize
+          const shouldInitialize = window.confirm(
+            "Live match not initialized yet.\n\nDo you want to initialize it now?"
+          );
+          if (shouldInitialize) {
+            navigate(`/scorer-dashboard/${match._id}`, { state: { match } });
+          }
+        }
+      } catch (err) {
+        console.error("Error checking live match:", err);
+        navigate(`/live-match/${match._id}`, { state: { match } });
+      }
+    } else if (activeTab === "completed") {
+      navigate(`/match-result/${match._id}`, { state: { match } });
+    } else if (activeTab === "upcoming") {
+      const matchTime = new Date(match.scheduledTime);
+      const now = new Date();
+      const minutesUntilStart = Math.floor((matchTime - now) / (1000 * 60));
+      
+      if (minutesUntilStart <= 30 && minutesUntilStart > 0) {
+        const shouldStart = window.confirm(
+          `Match starts in ${minutesUntilStart} minutes.\n\nDo you want to initialize scoring?`
+        );
+        if (shouldStart) {
+          navigate(`/scorer-dashboard/${match._id}`, { state: { match } });
+        }
+      } else {
+        alert(`Match scheduled for: ${matchTime.toLocaleString('en-IN')}`);
       }
     }
   };
 
   const renderMatches = () => {
-    if (loading) {
+    if (loading && matches.length === 0) {
       return (
         <div style={styles.loadingBox}>
           <div style={{ fontSize: "24px", marginBottom: "8px" }}>⏳</div>
@@ -269,43 +324,8 @@ export default function EventMatches() {
     }
 
     return matches.map((match) => {
-      // ✅ Real-time check for live status
-      const now = new Date();
-      const matchTime = new Date(match.scheduledTime);
-      const matchEndTime = new Date(matchTime.getTime() + 3 * 60 * 60 * 1000);
-      const isLive = now >= matchTime && now <= matchEndTime;
-      
-      // Calculate time until match starts
-      const timeDiff = matchTime - now;
-      const minutesUntilStart = Math.floor(timeDiff / (1000 * 60));
-      const hoursUntilStart = Math.floor(minutesUntilStart / 60);
-      const daysUntilStart = Math.floor(hoursUntilStart / 24);
-      
-      // Determine badge text (Status takes priority over time)
-      let badgeText = "📅 Upcoming";
-      let badgeStyle = styles.upcomingBadge;
-      
-      // ✅ PRIORITY 1: Check status first
-      if (match.status === "Completed") {
-        badgeText = "✅ Completed";
-        badgeStyle = styles.completedBadge;
-      } else if (match.status === "InProgress" || isLive) {
-        // ✅ PRIORITY 2: Check if manually set to InProgress or time-based live
-        badgeText = "🔴 LIVE";
-        badgeStyle = styles.liveBadge;
-      } else if (minutesUntilStart <= 15 && minutesUntilStart > 0) {
-        badgeText = `⏰ Starting in ${minutesUntilStart}m`;
-        badgeStyle = { ...styles.upcomingBadge, background: "#f39c12" };
-      } else if (hoursUntilStart < 1 && minutesUntilStart > 15) {
-        badgeText = `⏰ ${minutesUntilStart}m away`;
-        badgeStyle = styles.upcomingBadge;
-      } else if (daysUntilStart > 0) {
-        badgeText = `📅 ${daysUntilStart}d away`;
-        badgeStyle = styles.upcomingBadge;
-      } else if (hoursUntilStart > 0) {
-        badgeText = `⏰ ${hoursUntilStart}h away`;
-        badgeStyle = styles.upcomingBadge;
-      }
+      const isLive = match.status === "InProgress";
+      const isCompleted = match.status === "Completed";
 
       return (
         <div
@@ -314,38 +334,68 @@ export default function EventMatches() {
           onClick={() => handleMatchClick(match)}
           onMouseOver={(e) => {
             e.currentTarget.style.borderColor = "#667eea";
-            e.currentTarget.style.boxShadow =
-              "0 5px 15px rgba(102, 126, 234, 0.3)";
+            e.currentTarget.style.boxShadow = "0 5px 15px rgba(102, 126, 234, 0.3)";
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.borderColor = "#e0e0e0";
             e.currentTarget.style.boxShadow = "none";
           }}
         >
+          {/* Live Indicator Dot */}
+          {isLive && <div style={styles.liveIndicator}></div>}
+
           <div style={styles.matchHeader}>
             <span style={styles.teamNames}>
-              {match.teamA?.teamName || "Team A"} vs{" "}
-              {match.teamB?.teamName || "Team B"}
+              {match.teamA?.teamName || "Team A"} vs {match.teamB?.teamName || "Team B"}
             </span>
-            <span style={badgeStyle}>{badgeText}</span>
+            
+            {isLive && <span style={styles.liveBadge}>🔴 LIVE</span>}
+            {match.status === "Scheduled" && <span style={styles.upcomingBadge}>📅 Upcoming</span>}
+            {isCompleted && <span style={styles.completedBadge}>✅ Completed</span>}
           </div>
 
-          {match.status === "Completed" ? (
+          {/* Score Display for Live and Completed Matches */}
+          {(isLive || isCompleted) && (
             <>
               <div style={styles.scoreLarge}>
-                {match.scoreA || 0} - {match.scoreB || 0}
+                <span>{match.scoreA || 0}</span>
+                <span style={{ fontSize: "1.5rem", color: "#94a3b8" }}>-</span>
+                <span>{match.scoreB || 0}</span>
               </div>
-              <div
-                style={{
+
+              {/* Live Match Extra Info */}
+              {isLive && (
+                <div style={styles.liveScoreInfo}>
+                  <span style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: '#e74c3c',
+                    display: 'inline-block',
+                    animation: 'pulse 2s infinite'
+                  }}></span>
+                  <span>Live scoring in progress</span>
+                  <span>•</span>
+                  <span>Click to watch</span>
+                </div>
+              )}
+
+              {/* Completed Match Winner */}
+              {isCompleted && (
+                <div style={{
                   ...styles.matchInfo,
                   color: "#27ae60",
                   fontWeight: "600",
-                }}
-              >
-                🏆 Winner: {match.winner?.teamName || "TBD"}
-              </div>
+                  marginTop: "12px"
+                }}>
+                  🏆 Winner: {match.winner?.teamName || "TBD"}
+                </div>
+              )}
             </>
-          ) : (
+          )}
+
+          {/* Upcoming Match Info */}
+          {match.status === "Scheduled" && (
             <>
               <div style={styles.matchInfo}>
                 📅{" "}
@@ -376,15 +426,27 @@ export default function EventMatches() {
     <>
       <Header />
       <div style={styles.pageWrapper}>
-        <div style={styles.container}>
-          <style>
-            {`
+        <style>
+          {`
             @keyframes pulse {
               0%, 100% { opacity: 1; }
               50% { opacity: 0.7; }
             }
           `}
-          </style>
+        </style>
+
+        {/* Refresh Indicator */}
+        {loading && matches.length > 0 && (
+          <div style={styles.refreshIndicator}>🔄 Updating...</div>
+        )}
+
+        <div style={styles.container}>
+          <div style={styles.header}>
+            <h1 style={styles.title}>🏏 Match Center</h1>
+            <p style={styles.subtitle}>
+              {activeTab === "live" ? "Live updates every 5 seconds" : "Auto-updates every 30 seconds"}
+            </p>
+          </div>
 
           <div style={styles.tabsContainer}>
             <div

@@ -1,7 +1,12 @@
+// src/pages/ScorerDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { Plus, Play, BarChart3, Calendar, MapPin, Clock, LogOut, User, ArrowLeft, CheckCircle, Trophy } from 'lucide-react';
+import { io } from 'socket.io-client';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
+
+const BACKEND_URL = 'http://localhost:8000';
+let socket = null;
 
 export default function ScorerDashboard() {
     const [scorerName] = useState('Rahul Kumar');
@@ -14,13 +19,14 @@ export default function ScorerDashboard() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Scoring state
-    const [currentScore, setCurrentScore] = useState({ runs: 145, wickets: 5, overs: 18, balls: 3 });
-    const [currentBatsman, setCurrentBatsman] = useState({ name: 'Ravi Kumar', runs: 45, balls: 30 });
-    const [currentBowler, setCurrentBowler] = useState({ name: 'Shyam Singh', wickets: 3, runs: 28, overs: 4 });
-    const [lastBalls, setLastBalls] = useState(['4', '1', '0', 'W', '2', '6']);
+    // Live match data
+    const [liveMatchData, setLiveMatchData] = useState(null);
+    const [scoringLoading, setScoringLoading] = useState(false);
 
-    
+    // Scoring state
+    const [currentBatsman, setCurrentBatsman] = useState('');
+    const [currentBowler, setCurrentBowler] = useState('');
+    const [lastBalls, setLastBalls] = useState([]);
 
     // Fetch matches when tab changes
     useEffect(() => {
@@ -29,64 +35,105 @@ export default function ScorerDashboard() {
         }
     }, [activeTab, currentView]);
 
+    // Socket.IO connection
+    useEffect(() => {
+        if (currentMatch && currentView === 'scoring') {
+            // Connect to Socket.IO
+            socket = io(BACKEND_URL);
+
+            socket.on('connect', () => {
+                console.log('✅ Socket connected:', socket.id);
+                socket.emit('join-match', currentMatch._id);
+            });
+
+            socket.on('ball-updated', (data) => {
+                console.log('🏏 Ball update received:', data);
+                // Update live match data
+                fetchLiveMatchData();
+            });
+
+            socket.on('innings-complete', (data) => {
+                console.log('✅ Innings complete:', data);
+                alert('Innings completed!');
+                fetchLiveMatchData();
+            });
+
+            return () => {
+                if (socket) {
+                    socket.disconnect();
+                    console.log('❌ Socket disconnected');
+                }
+            };
+        }
+    }, [currentMatch, currentView]);
+
+    // Fetch live match data
+    useEffect(() => {
+        if (currentMatch && currentView === 'scoring') {
+            fetchLiveMatchData();
+        }
+    }, [currentMatch, currentView]);
+
     const fetchMatches = async () => {
-    try {
-        setLoading(true);
-        setError(null);
+        try {
+            setLoading(true);
+            setError(null);
 
-        // Map frontend tab to backend status
-        const statusMap = {
-            'live': 'InProgress',
-            'upcoming': 'Scheduled',
-            'completed': 'Completed'
-        };
+            const statusMap = {
+                'live': 'InProgress',
+                'upcoming': 'Scheduled',
+                'completed': 'Completed'
+            };
 
-        const status = statusMap[activeTab];
-        
-        // 🔍 Debug logs
-        console.log('🔍 Active Tab:', activeTab);
-        console.log('🔍 Backend Status:', status);
-        
-        const url = `http://localhost:8000/api/v1/matches?status=${status}`;
-        console.log('🔍 Fetching URL:', url);
-        
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-        
-        console.log('📥 Response Status:', response.status);
-        console.log('📥 Response OK:', response.ok);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Response Error:', errorText);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
+            const status = statusMap[activeTab];
+            const url = `${BACKEND_URL}/api/v1/matches?status=${status}`;
+            
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            setMatches(data.data || []);
+            
+        } catch (err) {
+            console.error('❌ Fetch Error:', err);
+            setError(err.message.includes('Failed to fetch') 
+                ? 'Cannot connect to server. Is backend running?' 
+                : err.message
+            );
+        } finally {
+            setLoading(false);
         }
+    };
 
-        const data = await response.json();
-        console.log('📊 Response Data:', data);
-        console.log('📋 Matches:', data.data);
-        
-        setMatches(data.data || []);
-        
-    } catch (err) {
-        console.error('❌ Fetch Error:', err);
-        console.error('❌ Error Name:', err.name);
-        console.error('❌ Error Message:', err.message);
-        
-        // Better error message
-        if (err.message.includes('Failed to fetch')) {
-            setError('Cannot connect to server. Is backend running on http://localhost:5000?');
-        } else {
-            setError(err.message);
+    const fetchLiveMatchData = async () => {
+        if (!currentMatch) return;
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/v1/live-matches/${currentMatch._id}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('📊 Live Match Data:', data.data);
+            setLiveMatchData(data.data);
+            
+            // Update last balls
+            const currentInnings = data.data.innings[data.data.currentInnings - 1];
+            if (currentInnings && currentInnings.ballByBall) {
+                const recent = currentInnings.ballByBall.slice(-6).reverse();
+                setLastBalls(recent.map(b => b.runs === 0 && b.isWicket ? 'W' : b.runs.toString()));
+            }
+
+        } catch (err) {
+            console.error('❌ Error fetching live match:', err);
         }
-    } finally {
-        setLoading(false);
-    }
-};
+    };
+
     const handleLogout = () => {
         if (window.confirm('Are you sure you want to logout?')) {
             alert('Logged out successfully!');
@@ -98,37 +145,88 @@ export default function ScorerDashboard() {
     };
 
     const handleStartScoring = (match = null) => {
-        setCurrentMatch(match || matches[0]);
+        const matchToScore = match || matches[0];
+        setCurrentMatch(matchToScore);
         setCurrentView('scoring');
     };
 
     const handleBackToDashboard = () => {
         setCurrentView('dashboard');
         setCurrentMatch(null);
+        setLiveMatchData(null);
     };
 
     const handleViewStats = () => {
         alert('Opening statistics dashboard...');
     };
 
-    const handleBallClick = (value) => {
-        alert(`Ball recorded: ${value}`);
-        const newBalls = [value, ...lastBalls.slice(0, 5)];
-        setLastBalls(newBalls);
+    const handleBallClick = async (value) => {
+        if (!currentBatsman || !currentBowler) {
+            alert('Please enter batsman and bowler names first!');
+            return;
+        }
 
-        if (value !== 'W' && value !== 'WD' && value !== 'NB') {
-            const runs = parseInt(value) || 0;
-            setCurrentScore(prev => ({
-                ...prev,
-                runs: prev.runs + runs,
-                balls: prev.balls === 5 ? 0 : prev.balls + 1,
-                overs: prev.balls === 5 ? prev.overs + 1 : prev.overs
-            }));
-            setCurrentBatsman(prev => ({
-                ...prev,
-                runs: prev.runs + runs,
-                balls: prev.balls + 1
-            }));
+        setScoringLoading(true);
+
+        try {
+            let ballData = {
+                batsman: currentBatsman,
+                bowler: currentBowler,
+                runs: 0,
+                extras: 0,
+                extrasType: 'none',
+                isWicket: false,
+                wicketType: 'none',
+                commentary: ''
+            };
+
+            // Parse button value
+            if (value === 'W') {
+                ballData.isWicket = true;
+                ballData.wicketType = 'caught';
+                ballData.commentary = `WICKET! ${currentBatsman} is out!`;
+            } else if (value === 'WD') {
+                ballData.extras = 1;
+                ballData.extrasType = 'wide';
+                ballData.commentary = 'Wide ball';
+            } else if (value === 'NB') {
+                ballData.extras = 1;
+                ballData.extrasType = 'noBall';
+                ballData.commentary = 'No ball';
+            } else {
+                ballData.runs = parseInt(value);
+                ballData.commentary = value === '4' ? 'FOUR!' : value === '6' ? 'SIX!' : `${value} run${value === '1' ? '' : 's'}`;
+            }
+
+            console.log('📤 Sending ball data:', ballData);
+
+            const response = await fetch(`${BACKEND_URL}/api/v1/live-matches/${currentMatch._id}/ball`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(ballData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to update ball');
+            }
+
+            const result = await response.json();
+            console.log('✅ Ball updated:', result);
+
+            // Refresh live data
+            await fetchLiveMatchData();
+
+            // Update last balls display
+            setLastBalls([value, ...lastBalls.slice(0, 5)]);
+
+        } catch (err) {
+            console.error('❌ Error updating ball:', err);
+            alert(`Error: ${err.message}`);
+        } finally {
+            setScoringLoading(false);
         }
     };
 
@@ -416,21 +514,21 @@ export default function ScorerDashboard() {
             flex: 1,
             background: '#f8f9fa',
             padding: '16px',
-            borderRadius: '12px'
+            borderRadius: '12px',
+            marginBottom: '16px'
         },
         playerLabel: {
             fontSize: '12px',
             color: '#6b7280',
             marginBottom: '4px'
         },
-        playerName: {
+        playerInput: {
+            width: '100%',
+            padding: '8px',
+            fontSize: '16px',
             fontWeight: 'bold',
-            fontSize: '18px',
-            color: '#1f2937'
-        },
-        playerStats: {
-            fontSize: '14px',
-            color: '#6b7280',
+            border: '2px solid #e5e7eb',
+            borderRadius: '6px',
             marginTop: '4px'
         },
         ballButtonsGrid: {
@@ -448,23 +546,8 @@ export default function ScorerDashboard() {
             fontSize: '24px',
             fontWeight: 'bold',
             cursor: 'pointer',
-            transition: 'all 0.3s'
-        },
-        submitBtn: {
-            width: '100%',
-            background: '#16a34a',
-            color: 'white',
-            fontWeight: 'bold',
-            fontSize: '20px',
-            padding: '16px',
-            borderRadius: '12px',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px',
-            transition: 'all 0.3s'
+            transition: 'all 0.3s',
+            opacity: scoringLoading ? 0.5 : 1
         },
         lastBallsContainer: {
             background: '#f8f9fa',
@@ -532,100 +615,126 @@ export default function ScorerDashboard() {
     };
 
     // Scoring Interface Component
-    const ScoringInterface = () => (
-        <div style={styles.mainContent}>
-            <div style={styles.actionsCard}>
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                    <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
-                        {currentMatch?.teamA?.name || 'Team A'} vs {currentMatch?.teamB?.name || 'Team B'}
-                    </h2>
-                    {getStatusBadge('InProgress')}
-                </div>
-
-                <div style={styles.scoreDisplay}>
-                    <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px', color: '#6b7280' }}>
-                        {currentMatch?.teamA?.name || 'Team A'}
-                    </div>
-                    <div style={styles.scoreLarge}>
-                        {currentScore.runs}/{currentScore.wickets}
-                    </div>
-                    <div style={{ color: '#6b7280', fontSize: '16px' }}>
-                        {currentScore.overs}.{currentScore.balls} overs • Run Rate: {(currentScore.runs / (currentScore.overs + currentScore.balls / 6)).toFixed(2)}
+    const ScoringInterface = () => {
+        if (!liveMatchData) {
+            return (
+                <div style={styles.mainContent}>
+                    <div style={styles.loadingSpinner}>
+                        <div style={{ fontSize: '24px', marginBottom: '8px' }}>⏳</div>
+                        <div>Loading live match data...</div>
                     </div>
                 </div>
+            );
+        }
 
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-                    <div style={styles.playerBox}>
-                        <div style={styles.playerLabel}>🏏 Batsman</div>
-                        <div style={styles.playerName}>{currentBatsman.name}</div>
-                        <div style={styles.playerStats}>
-                            {currentBatsman.runs} runs ({currentBatsman.balls} balls)
+        const currentInnings = liveMatchData.innings[liveMatchData.currentInnings - 1];
+
+        return (
+            <div style={styles.mainContent}>
+                <div style={styles.actionsCard}>
+                    <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                        <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
+                            {liveMatchData.teamA?.teamName || 'Team A'} vs {liveMatchData.teamB?.teamName || 'Team B'}
+                        </h2>
+                        {getStatusBadge('InProgress')}
+                    </div>
+
+                    <div style={styles.scoreDisplay}>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px', color: '#6b7280' }}>
+                            {currentInnings.battingTeam?.teamName || 'Batting Team'}
+                        </div>
+                        <div style={styles.scoreLarge}>
+                            {currentInnings.score}/{currentInnings.wickets}
+                        </div>
+                        <div style={{ color: '#6b7280', fontSize: '16px' }}>
+                            {currentInnings.overs} overs • Run Rate: {(currentInnings.score / (currentInnings.overs || 1)).toFixed(2)}
                         </div>
                     </div>
-                    <div style={styles.playerBox}>
-                        <div style={styles.playerLabel}>⚾ Bowler</div>
-                        <div style={styles.playerName}>{currentBowler.name}</div>
-                        <div style={styles.playerStats}>
-                            {currentBowler.wickets}/{currentBowler.runs} ({currentBowler.overs} overs)
+
+                    {/* Player Input Fields */}
+                    <div style={{ marginBottom: '24px' }}>
+                        <div style={styles.playerBox}>
+                            <div style={styles.playerLabel}>🏏 Current Batsman</div>
+                            <input
+                                type="text"
+                                style={styles.playerInput}
+                                placeholder="Enter batsman name"
+                                value={currentBatsman}
+                                onChange={(e) => setCurrentBatsman(e.target.value)}
+                            />
+                        </div>
+                        <div style={styles.playerBox}>
+                            <div style={styles.playerLabel}>⚾ Current Bowler</div>
+                            <input
+                                type="text"
+                                style={styles.playerInput}
+                                placeholder="Enter bowler name"
+                                value={currentBowler}
+                                onChange={(e) => setCurrentBowler(e.target.value)}
+                            />
                         </div>
                     </div>
-                </div>
 
-                <div style={styles.lastBallsContainer}>
-                    <div style={styles.lastBallsTitle}>Last 6 Balls:</div>
-                    <div style={styles.lastBallsList}>
-                        {lastBalls.map((ball, index) => (
-                            <div
-                                key={index}
+                    <div style={styles.lastBallsContainer}>
+                        <div style={styles.lastBallsTitle}>Last 6 Balls:</div>
+                        <div style={styles.lastBallsList}>
+                            {lastBalls.length === 0 ? (
+                                <div style={{ color: '#6b7280' }}>No balls yet</div>
+                            ) : (
+                                lastBalls.map((ball, index) => (
+                                    <div
+                                        key={index}
+                                        style={{
+                                            ...styles.lastBall,
+                                            background: ball === 'W' ? '#ef4444' :
+                                                ball === '6' ? '#7c3aed' :
+                                                    ball === '4' ? '#3b82f6' : '#e5e7eb',
+                                            color: ['W', '6', '4'].includes(ball) ? 'white' : '#1f2937'
+                                        }}
+                                    >
+                                        {ball}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    <div style={styles.ballButtonsGrid}>
+                        {['0', '1', '2', '3', '4', '6', 'W', 'WD'].map((value) => (
+                            <button
+                                key={value}
                                 style={{
-                                    ...styles.lastBall,
-                                    background: ball === 'W' ? '#ef4444' :
-                                        ball === '6' ? '#7c3aed' :
-                                            ball === '4' ? '#3b82f6' : '#e5e7eb',
-                                    color: ['W', '6', '4'].includes(ball) ? 'white' : '#1f2937'
+                                    ...styles.ballButton,
+                                    borderColor: value === 'W' ? '#ef4444' : '#7c3aed',
+                                    color: value === 'W' ? '#ef4444' : '#7c3aed'
+                                }}
+                                onClick={() => handleBallClick(value)}
+                                disabled={scoringLoading}
+                                onMouseEnter={(e) => {
+                                    if (!scoringLoading) {
+                                        e.target.style.background = value === 'W' ? '#ef4444' : '#7c3aed';
+                                        e.target.style.color = 'white';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.target.style.background = 'white';
+                                    e.target.style.color = value === 'W' ? '#ef4444' : '#7c3aed';
                                 }}
                             >
-                                {ball}
-                            </div>
+                                {value}
+                            </button>
                         ))}
                     </div>
-                </div>
 
-                <div style={styles.ballButtonsGrid}>
-                    {['0', '1', '2', '3', '4', '6', 'W', 'WD'].map((value) => (
-                        <button
-                            key={value}
-                            style={{
-                                ...styles.ballButton,
-                                borderColor: value === 'W' ? '#ef4444' : '#7c3aed',
-                                color: value === 'W' ? '#ef4444' : '#7c3aed'
-                            }}
-                            onClick={() => handleBallClick(value)}
-                            onMouseEnter={(e) => {
-                                e.target.style.background = value === 'W' ? '#ef4444' : '#7c3aed';
-                                e.target.style.color = 'white';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.target.style.background = 'white';
-                                e.target.style.color = value === 'W' ? '#ef4444' : '#7c3aed';
-                            }}
-                        >
-                            {value}
-                        </button>
-                    ))}
+                    {scoringLoading && (
+                        <div style={{ textAlign: 'center', color: '#6b7280', marginTop: '16px' }}>
+                            ⏳ Updating score...
+                        </div>
+                    )}
                 </div>
-
-                <button
-                    style={styles.submitBtn}
-                    onMouseEnter={(e) => e.target.style.background = '#15803d'}
-                    onMouseLeave={(e) => e.target.style.background = '#16a34a'}
-                >
-                    <CheckCircle size={24} />
-                    <span>Submit Ball</span>
-                </button>
             </div>
-        </div>
-    );
+        );
+    };
 
     // Render Matches based on status
     const renderMatches = () => {
@@ -678,7 +787,7 @@ export default function ScorerDashboard() {
             >
                 <div style={styles.matchHeader}>
                     <h3 style={styles.matchTitle}>
-                        {match.teamA?.name || 'Team A'} vs {match.teamB?.name || 'Team B'}
+                        {match.teamA?.teamName || 'Team A'} vs {match.teamB?.teamName || 'Team B'}
                     </h3>
                     {getStatusBadge(match.status)}
                 </div>
@@ -703,14 +812,14 @@ export default function ScorerDashboard() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                                 <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-                                    {match.teamA?.name}
+                                    {match.teamA?.teamName}
                                 </div>
                                 <div style={styles.score}>{match.scoreA || 0}</div>
                             </div>
                             <div style={{ fontSize: '24px', color: '#9ca3af' }}>vs</div>
                             <div style={{ textAlign: 'right' }}>
                                 <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-                                    {match.teamB?.name}
+                                    {match.teamB?.teamName}
                                 </div>
                                 <div style={styles.score}>{match.scoreB || 0}</div>
                             </div>
@@ -730,7 +839,7 @@ export default function ScorerDashboard() {
                                 gap: '8px'
                             }}>
                                 <Trophy size={16} />
-                                Winner: {match.winner?.name || 'TBD'}
+                                Winner: {match.winner?.teamName || 'TBD'}
                             </div>
                         )}
                     </div>
@@ -756,8 +865,7 @@ export default function ScorerDashboard() {
         <div style={styles.mainContent}>
             <div style={styles.welcomeCard}>
                 <h1 style={styles.welcomeTitle}>
-                    🎯 Scorer Dashboard
-                </h1>
+                    🎯 Scorer Dashboard</h1>
                 <p style={styles.welcomeText}>
                     Welcome back, {scorerName}! Ready to score some matches?
                 </p>
@@ -865,7 +973,6 @@ export default function ScorerDashboard() {
             <div style={styles.container}>
                 <style>{`
                     @keyframes pulse {
-                        0%, 100% { opacity:@keyframes pulse {
                         0%, 100% { opacity: 1; }
                         50% { opacity: 0.7; }
                     }

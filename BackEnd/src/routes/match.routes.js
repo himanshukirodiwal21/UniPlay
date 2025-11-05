@@ -79,7 +79,7 @@ router.get("/debug/teams/:eventId", async (req, res) => {
 // 📊 GET ALL EVENTS - to find your event ID
 router.get("/debug/events", async (req, res) => {
   try {
-    const { Event } = await import("../models/event.models.js");
+    const { Event } = await import("../models/event.model.js");
     const events = await Event.find({}).select("name _id scheduleGenerated registeredTeams");
     
     console.log("\n📊 All Events:");
@@ -107,7 +107,7 @@ router.post("/fix-teams/:eventId", async (req, res) => {
     console.log("\n🔧 Linking teams to event:", eventId);
     
     // Check if event exists
-    const { Event } = await import("../models/event.models.js");
+    const { Event } = await import("../models/event.model.js");
     const event = await Event.findById(eventId);
     
     if (!event) {

@@ -1,5 +1,5 @@
 import TeamRegistration from "../models/teamRegistration.model.js";
-import { Event } from "../models/event.models.js";
+import { Event } from "../models/event.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";

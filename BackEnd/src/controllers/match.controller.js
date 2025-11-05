@@ -1,5 +1,5 @@
 import Match from "../models/match.model.js";
-import { Event } from "../models/event.models.js";
+import { Event } from "../models/event.model.js";
 import TeamRegistration from "../models/teamRegistration.model.js";
 
 /* -------------------------------------------------------

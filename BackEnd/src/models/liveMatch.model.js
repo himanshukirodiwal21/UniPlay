@@ -3,7 +3,7 @@ import mongoose, { Schema } from "mongoose";
 
 const ballSchema = new Schema({
   ballNumber: Number,
-  over: Number,
+  over: String, // e.g., "1.1", "1.2"
   batsman: String,
   bowler: String,
   runs: {
@@ -127,7 +127,7 @@ const liveMatchSchema = new Schema({
   status: {
     type: String,
     enum: ['notStarted', 'inProgress', 'innings1Complete', 'innings2Complete', 'completed'],
-    default: 'notStarted'
+    default: 'inProgress'
   },
   result: {
     winner: {
@@ -159,6 +159,6 @@ liveMatchSchema.index({ match: 1 });
 liveMatchSchema.index({ status: 1 });
 liveMatchSchema.index({ lastUpdated: -1 });
 
-// ✅ FIXED: Use default export
-const LiveMatch = mongoose.models.LiveMatch || mongoose.model("LiveMatch", liveMatchSchema);
+// ✅ IMPORTANT: Default export for consistency
+const LiveMatch = mongoose.model("LiveMatch", liveMatchSchema);
 export default LiveMatch;

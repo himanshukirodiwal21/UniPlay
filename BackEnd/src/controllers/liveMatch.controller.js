@@ -1,6 +1,7 @@
 // src/controllers/liveMatch.controller.js
 import LiveMatch from "../models/liveMatch.model.js";
 import Match from "../models/match.model.js";
+import { io } from "../index.js";
 
 /* -------------------------------------------------------
    🎬 Initialize Live Match
@@ -35,6 +36,20 @@ export const initializeLiveMatch = async (req, res) => {
     const bowlingTeam = tossDecision === 'bowl' ? tossWinner :
                        (tossWinner.toString() === match.teamA._id.toString() ? match.teamB._id : match.teamA._id);
 
+    // Create first innings
+    const firstInnings = {
+      inningsNumber: 1,
+      battingTeam,
+      bowlingTeam,
+      score: 0,
+      wickets: 0,
+      overs: 0,
+      balls: 0,
+      extras: 0,
+      currentBatsmen: [],
+      ballByBall: []
+    };
+
     // Create live match
     const liveMatch = await LiveMatch.create({
       match: matchId,
@@ -43,22 +58,16 @@ export const initializeLiveMatch = async (req, res) => {
       tossWinner,
       tossDecision,
       currentInnings: 1,
-      innings: [
-        {
-          inningsNumber: 1,
-          battingTeam,
-          bowlingTeam,
-          ballByBall: []
-        }
-      ],
+      innings: [firstInnings],
       status: 'inProgress',
-      totalOvers: match.stage === 'Final' ? 20 : 20 // Can be customized
+      totalOvers: 20,
+      lastUpdated: new Date()
     });
 
     // Update match status to InProgress
     await Match.findByIdAndUpdate(matchId, { status: 'InProgress' });
 
-    console.log(`🎬 Live match initialized: ${match.teamA.teamName} vs ${match.teamB.teamName}`);
+    console.log(`✅ Live match initialized: ${match.teamA.teamName} vs ${match.teamB.teamName}`);
 
     res.status(201).json({
       success: true,
@@ -77,7 +86,91 @@ export const initializeLiveMatch = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   🏏 Update Ball (Ball-by-Ball)
+   📊 Get Live Match Data
+-------------------------------------------------------- */
+export const getLiveMatch = async (req, res) => {
+  try {
+    const { matchId } = req.params;
+
+    let liveMatch = await LiveMatch.findOne({ match: matchId })
+      .populate('teamA teamB', 'teamName captainName')
+      .populate('tossWinner', 'teamName')
+      .populate('innings.battingTeam innings.bowlingTeam', 'teamName')
+      .populate('match', 'venue scheduledTime stage');
+
+    // ✨ Auto-initialize if not found
+    if (!liveMatch) {
+      const match = await Match.findById(matchId)
+        .populate('teamA teamB', 'teamName');
+      
+      if (!match) {
+        return res.status(404).json({ 
+          success: false,
+          message: "Match not found" 
+        });
+      }
+
+      // Auto-initialize if match is InProgress or Scheduled
+      if (match.status === 'InProgress' || match.status === 'Scheduled') {
+        const firstInnings = {
+          inningsNumber: 1,
+          battingTeam: match.teamA._id,
+          bowlingTeam: match.teamB._id,
+          score: 0,
+          wickets: 0,
+          overs: 0,
+          balls: 0,
+          extras: 0,
+          currentBatsmen: [],
+          ballByBall: []
+        };
+
+        liveMatch = await LiveMatch.create({
+          match: matchId,
+          teamA: match.teamA._id,
+          teamB: match.teamB._id,
+          tossWinner: match.teamA._id,
+          tossDecision: 'bat',
+          currentInnings: 1,
+          innings: [firstInnings],
+          status: 'inProgress',
+          totalOvers: 20
+        });
+
+        await Match.findByIdAndUpdate(matchId, { status: 'InProgress' });
+        console.log(`✅ LiveMatch auto-created: ${matchId}`);
+
+        // Re-populate
+        liveMatch = await LiveMatch.findOne({ match: matchId })
+          .populate('teamA teamB', 'teamName captainName')
+          .populate('tossWinner', 'teamName')
+          .populate('innings.battingTeam innings.bowlingTeam', 'teamName')
+          .populate('match', 'venue scheduledTime stage');
+      } else {
+        return res.status(400).json({ 
+          success: false,
+          message: `Match is not live. Status: ${match.status}` 
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: liveMatch
+    });
+
+  } catch (err) {
+    console.error("❌ Error fetching live match:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message
+    });
+  }
+};
+
+/* -------------------------------------------------------
+   🏏 Update Ball (Ball-by-Ball) - ✅ UPDATED
 -------------------------------------------------------- */
 export const updateBall = async (req, res) => {
   try {
@@ -105,17 +198,18 @@ export const updateBall = async (req, res) => {
 
     const currentInnings = liveMatch.innings[liveMatch.currentInnings - 1];
 
-    // Calculate ball number and over
+    // Calculate over
     const totalBalls = currentInnings.balls + 1;
-    const over = Math.floor(totalBalls / 6);
-    const ballInOver = totalBalls % 6;
+    const overNum = Math.floor(totalBalls / 6);
+    const ballInOver = totalBalls % 6 === 0 ? 6 : totalBalls % 6;
+    const overString = ballInOver === 6 ? `${overNum}` : `${overNum}.${ballInOver}`;
 
     // Create ball entry
     const ball = {
       ballNumber: totalBalls,
-      over: `${over}.${ballInOver}`,
-      batsman,
-      bowler,
+      over: overString,
+      batsman: batsman || 'Unknown',
+      bowler: bowler || 'Unknown',
       runs: runs || 0,
       extras: extras || 0,
       extrasType: extrasType || 'none',
@@ -126,7 +220,7 @@ export const updateBall = async (req, res) => {
       timestamp: new Date()
     };
 
-    // Update innings stats
+    // Update innings
     currentInnings.ballByBall.push(ball);
     currentInnings.balls += 1;
     currentInnings.score += (runs || 0) + (extras || 0);
@@ -140,38 +234,7 @@ export const updateBall = async (req, res) => {
       currentInnings.wickets += 1;
     }
 
-    // Update batsman stats
-    if (batsman && currentInnings.currentBatsmen.length > 0) {
-      const batsmanIndex = currentInnings.currentBatsmen.findIndex(b => b.player === batsman);
-      if (batsmanIndex !== -1) {
-        currentInnings.currentBatsmen[batsmanIndex].runs += (runs || 0);
-        currentInnings.currentBatsmen[batsmanIndex].balls += 1;
-        if (runs === 4) currentInnings.currentBatsmen[batsmanIndex].fours += 1;
-        if (runs === 6) currentInnings.currentBatsmen[batsmanIndex].sixes += 1;
-        
-        const sr = (currentInnings.currentBatsmen[batsmanIndex].runs / 
-                   currentInnings.currentBatsmen[batsmanIndex].balls * 100).toFixed(2);
-        currentInnings.currentBatsmen[batsmanIndex].strikeRate = parseFloat(sr);
-      }
-    }
-
-    // Update bowler stats
-    if (bowler && currentInnings.currentBowler?.player === bowler) {
-      currentInnings.currentBowler.runs += (runs || 0) + (extras || 0);
-      if (isWicket) {
-        currentInnings.currentBowler.wickets += 1;
-      }
-      
-      const oversCompleted = Math.floor(currentInnings.balls / 6);
-      currentInnings.currentBowler.overs = oversCompleted;
-      
-      if (oversCompleted > 0) {
-        const economy = (currentInnings.currentBowler.runs / oversCompleted).toFixed(2);
-        currentInnings.currentBowler.economy = parseFloat(economy);
-      }
-    }
-
-    // Check if innings complete
+    // Check innings complete
     if (currentInnings.wickets >= 10 || currentInnings.overs >= liveMatch.totalOvers) {
       currentInnings.isCompleted = true;
       liveMatch.status = 'innings1Complete';
@@ -181,13 +244,75 @@ export const updateBall = async (req, res) => {
     liveMatch.lastUpdated = new Date();
     await liveMatch.save();
 
-    // Emit socket event (if socket.io is configured)
-    if (req.app.io) {
-      req.app.io.emit(`match:${matchId}:update`, {
+    // ✅ ============= UPDATE MATCH MODEL =============
+    // Determine which score field to update (scoreA or scoreB)
+    const innings1 = liveMatch.innings[0];
+    let scoreA = 0, scoreB = 0;
+    let currentBatting = 'teamA';
+    let currentOvers = '0.0';
+    let currentWickets = 0;
+
+    if (liveMatch.currentInnings === 1) {
+      // First innings - batting team is innings1.battingTeam
+      if (innings1.battingTeam.toString() === liveMatch.teamA.toString()) {
+        scoreA = innings1.score;
+        currentBatting = 'teamA';
+      } else {
+        scoreB = innings1.score;
+        currentBatting = 'teamB';
+      }
+      currentOvers = innings1.overs.toFixed(1);
+      currentWickets = innings1.wickets;
+    } else if (liveMatch.currentInnings === 2) {
+      // Second innings
+      const innings2 = liveMatch.innings[1];
+      
+      if (innings1.battingTeam.toString() === liveMatch.teamA.toString()) {
+        scoreA = innings1.score;
+        scoreB = innings2.score;
+        currentBatting = 'teamB';
+      } else {
+        scoreA = innings2.score;
+        scoreB = innings1.score;
+        currentBatting = 'teamA';
+      }
+      currentOvers = innings2.overs.toFixed(1);
+      currentWickets = innings2.wickets;
+    }
+
+    // Update Match model with current scores
+    await Match.findByIdAndUpdate(matchId, {
+      scoreA,
+      scoreB,
+      overs: currentOvers,
+      wickets: currentWickets,
+      currentBatting,
+      status: 'InProgress'
+    });
+
+    console.log(`✅ Match model updated: scoreA=${scoreA}, scoreB=${scoreB}, overs=${currentOvers}, wickets=${currentWickets}`);
+
+    // ✅ Fetch updated match with populated data for socket emission
+    const updatedMatch = await Match.findById(matchId)
+      .populate('teamA teamB', 'teamName')
+      .lean();
+
+    console.log('✅ Updated match fetched:', updatedMatch);
+
+    // ✅ ============= EMIT SOCKET EVENT =============
+    if (io) {
+      io.to(matchId).emit('ball-updated', {
+        matchId,
+        match: updatedMatch,  // ✅ Full match data with scoreA, scoreB
         ball,
-        innings: currentInnings,
+        innings: {
+          score: currentInnings.score,
+          wickets: currentInnings.wickets,
+          overs: currentInnings.overs
+        },
         status: liveMatch.status
       });
+      console.log('📡 Socket emitted: ball-updated with match data');
     }
 
     res.json({
@@ -195,48 +320,18 @@ export const updateBall = async (req, res) => {
       message: "Ball updated successfully",
       data: {
         ball,
-        innings: currentInnings,
+        currentScore: {
+          runs: currentInnings.score,
+          wickets: currentInnings.wickets,
+          overs: currentInnings.overs
+        },
+        match: updatedMatch,
         status: liveMatch.status
       }
     });
 
   } catch (err) {
     console.error("❌ Error updating ball:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: err.message
-    });
-  }
-};
-
-/* -------------------------------------------------------
-   📊 Get Live Match Data
--------------------------------------------------------- */
-export const getLiveMatch = async (req, res) => {
-  try {
-    const { matchId } = req.params;
-
-    const liveMatch = await LiveMatch.findOne({ match: matchId })
-      .populate('teamA teamB', 'teamName captainName')
-      .populate('tossWinner', 'teamName')
-      .populate('innings.battingTeam innings.bowlingTeam', 'teamName')
-      .populate('match', 'venue scheduledTime stage');
-
-    if (!liveMatch) {
-      return res.status(404).json({
-        success: false,
-        message: "Live match not found"
-      });
-    }
-
-    res.json({
-      success: true,
-      data: liveMatch
-    });
-
-  } catch (err) {
-    console.error("❌ Error fetching live match:", err);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -267,24 +362,27 @@ export const completeInnings = async (req, res) => {
 
     if (liveMatch.currentInnings === 1) {
       // Start second innings
-      const firstInningsBattingTeam = currentInnings.battingTeam;
-      const secondInningsBattingTeam = firstInningsBattingTeam.toString() === liveMatch.teamA._id.toString() 
+      const secondBattingTeam = currentInnings.battingTeam.toString() === liveMatch.teamA._id.toString() 
         ? liveMatch.teamB._id 
         : liveMatch.teamA._id;
-      const secondInningsBowlingTeam = firstInningsBattingTeam;
 
       liveMatch.innings.push({
         inningsNumber: 2,
-        battingTeam: secondInningsBattingTeam,
-        bowlingTeam: secondInningsBowlingTeam,
+        battingTeam: secondBattingTeam,
+        bowlingTeam: currentInnings.battingTeam,
+        score: 0,
+        wickets: 0,
+        overs: 0,
+        balls: 0,
+        extras: 0,
+        currentBatsmen: [],
         ballByBall: []
       });
 
       liveMatch.currentInnings = 2;
       liveMatch.status = 'innings1Complete';
 
-      console.log(`✅ Innings 1 complete. Starting Innings 2...`);
-
+      console.log(`✅ Innings 1 complete. Starting Innings 2`);
     } else {
       // Match complete
       const innings1 = liveMatch.innings[0];
@@ -305,7 +403,7 @@ export const completeInnings = async (req, res) => {
       liveMatch.result = {
         winner,
         margin,
-        summary: `${winner ? liveMatch.teamA.teamName : "Tie"} won by ${margin}`
+        summary: winner ? `Won by ${margin}` : "Match Tied"
       };
 
       liveMatch.status = 'completed';
@@ -314,14 +412,25 @@ export const completeInnings = async (req, res) => {
       await Match.findByIdAndUpdate(matchId, {
         status: 'Completed',
         winner,
-        scoreA: innings1.battingTeam.toString() === liveMatch.teamA._id.toString() ? innings1.score : innings2.score,
-        scoreB: innings1.battingTeam.toString() === liveMatch.teamB._id.toString() ? innings1.score : innings2.score
+        scoreA: innings1.battingTeam.toString() === liveMatch.teamA._id.toString() 
+          ? innings1.score : innings2.score,
+        scoreB: innings1.battingTeam.toString() === liveMatch.teamB._id.toString() 
+          ? innings1.score : innings2.score
       });
 
-      console.log(`🏆 Match completed: ${liveMatch.result.summary}`);
+      console.log(`🏆 Match completed`);
     }
 
     await liveMatch.save();
+
+    // Emit socket
+    if (io) {
+      io.to(matchId).emit('innings-complete', {
+        matchId,
+        status: liveMatch.status,
+        result: liveMatch.result
+      });
+    }
 
     res.json({
       success: true,
@@ -402,7 +511,6 @@ export const setCurrentPlayers = async (req, res) => {
 
     const currentInnings = liveMatch.innings[liveMatch.currentInnings - 1];
 
-    // Set batsmen
     if (batsmen && Array.isArray(batsmen)) {
       currentInnings.currentBatsmen = batsmen.map(b => ({
         player: b,
@@ -414,7 +522,6 @@ export const setCurrentPlayers = async (req, res) => {
       }));
     }
 
-    // Set bowler
     if (bowler) {
       currentInnings.currentBowler = {
         player: bowler,

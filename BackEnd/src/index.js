@@ -32,7 +32,6 @@ io.on('connection', (socket) => {
   // Handle score update from scorer
   socket.on('update-score', (data) => {
     console.log('📊 Score Update:', data);
-    // Broadcast to all clients in that match room
     io.to(data.matchId).emit('score-updated', data);
   });
 
@@ -59,7 +58,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// ✅ Export io for use in controllers
+// ✅ Export io for use in controllers (IMPORTANT!)
 export { io };
 
 // ✅ Start server with Socket.IO
