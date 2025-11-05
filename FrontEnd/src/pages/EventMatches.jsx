@@ -13,6 +13,7 @@ export default function EventMatches() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const styles = {
     pageWrapper: {
@@ -207,22 +208,38 @@ export default function EventMatches() {
       background: "#e74c3c",
       animation: "pulse 2s infinite",
     },
+    timeRemainingBadge: {
+      background: "#f59e0b",
+      color: "white",
+      padding: "6px 16px",
+      borderRadius: "20px",
+      fontSize: "12px",
+      fontWeight: "bold",
+    },
   };
 
-  // ✅ Fetch matches when tab changes + Auto-refresh every 5 seconds for live tab
+  // ✅ Update current time every second for countdown
+  useEffect(() => {
+    const timeInterval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timeInterval);
+  }, []);
+
+  // ✅ Fetch matches when tab changes + Auto-refresh
   useEffect(() => {
     fetchMatches();
     
     const interval = setInterval(() => {
       fetchMatches();
-    }, activeTab === "live" ? 5000 : 30000); // 5s for live, 30s for others
+    }, activeTab === "live" ? 5000 : 30000);
 
     return () => clearInterval(interval);
   }, [activeTab]);
 
   const fetchMatches = async () => {
     try {
-      // Don't show loading spinner if already have data
       if (matches.length === 0) {
         setLoading(true);
       }
@@ -252,7 +269,64 @@ export default function EventMatches() {
       const data = await response.json();
       console.log(`📊 Fetched ${data.data?.length || 0} ${activeTab} matches`);
 
-      setMatches(data.data || []);
+      // ✅ For live matches, fetch live data to get accurate scores
+      if (activeTab === "live" && data.data?.length > 0) {
+        const matchesWithLiveData = await Promise.all(
+          data.data.map(async (match) => {
+            try {
+              const liveResponse = await fetch(`${BACKEND_URL}/api/v1/live-matches/${match._id}`);
+              const liveData = await liveResponse.json();
+              
+              if (liveData.success) {
+                // Extract scores from live data
+                const currentInnings = liveData.data.innings[liveData.data.currentInnings - 1];
+                
+                // Get team scores
+                const getTeamScore = (teamId) => {
+                  if (currentInnings?.battingTeam?._id?.toString() === teamId?.toString()) {
+                    return {
+                      score: currentInnings.score || 0,
+                      wickets: currentInnings.wickets || 0,
+                      overs: currentInnings.overs || 0,
+                    };
+                  }
+                  
+                  if (liveData.data.innings[0]?.battingTeam?._id?.toString() === teamId?.toString()) {
+                    return {
+                      score: liveData.data.innings[0].score || 0,
+                      wickets: liveData.data.innings[0].wickets || 0,
+                      overs: liveData.data.innings[0].overs || 0,
+                    };
+                  }
+                  
+                  return { score: 0, wickets: 0, overs: 0 };
+                };
+
+                const teamAScore = getTeamScore(match.teamA?._id);
+                const teamBScore = getTeamScore(match.teamB?._id);
+
+                return {
+                  ...match,
+                  scoreA: teamAScore.score,
+                  wicketsA: teamAScore.wickets,
+                  oversA: teamAScore.overs,
+                  scoreB: teamBScore.score,
+                  wicketsB: teamBScore.wickets,
+                  oversB: teamBScore.overs,
+                };
+              }
+              return match;
+            } catch (err) {
+              console.error(`Error fetching live data for match ${match._id}:`, err);
+              return match;
+            }
+          })
+        );
+        setMatches(matchesWithLiveData);
+      } else {
+        setMatches(data.data || []);
+      }
+
       setLastUpdate(new Date());
     } catch (err) {
       console.error("❌ Fetch Error:", err);
@@ -268,18 +342,38 @@ export default function EventMatches() {
     }
   };
 
+  // ✅ Calculate time remaining for upcoming matches
+  const getTimeRemaining = (scheduledTime) => {
+    const matchTime = new Date(scheduledTime);
+    const now = currentTime;
+    const diffMs = matchTime - now;
+
+    if (diffMs <= 0) {
+      return "Starting soon";
+    }
+
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) {
+      return `Starts in ${diffDays}d ${diffHours % 24}h`;
+    } else if (diffHours > 0) {
+      return `Starts in ${diffHours}h ${diffMins % 60}m`;
+    } else {
+      return `Starts in ${diffMins}m`;
+    }
+  };
+
   const handleMatchClick = async (match) => {
     if (activeTab === "live") {
-      // Check if live match is initialized
       try {
         const response = await fetch(`${BACKEND_URL}/api/v1/live-matches/${match._id}`);
         const data = await response.json();
         
         if (data.success) {
-          // Live match exists, navigate to viewer
           navigate(`/live-match/${match._id}`, { state: { match } });
         } else {
-          // Not initialized yet, ask to initialize
           const shouldInitialize = window.confirm(
             "Live match not initialized yet.\n\nDo you want to initialize it now?"
           );
@@ -364,7 +458,6 @@ export default function EventMatches() {
             e.currentTarget.style.boxShadow = "none";
           }}
         >
-          {/* Live Indicator Dot */}
           {isLive && <div style={styles.liveIndicator}></div>}
 
           <div style={styles.matchHeader}>
@@ -373,7 +466,11 @@ export default function EventMatches() {
             </span>
             
             {isLive && <span style={styles.liveBadge}>🔴 LIVE</span>}
-            {match.status === "Scheduled" && <span style={styles.upcomingBadge}>📅 Upcoming</span>}
+            {match.status === "Scheduled" && (
+              <span style={styles.timeRemainingBadge}>
+                ⏰ {getTimeRemaining(match.scheduledTime)}
+              </span>
+            )}
             {isCompleted && <span style={styles.completedBadge}>✅ Completed</span>}
           </div>
 
@@ -381,7 +478,6 @@ export default function EventMatches() {
           {(isLive || isCompleted) && (
             <>
               <div style={styles.scoreContainer}>
-                {/* Team A Score */}
                 <div style={styles.teamScore}>
                   <div style={styles.teamScoreLabel}>
                     {match.teamA?.teamName || "Team A"}
@@ -396,7 +492,6 @@ export default function EventMatches() {
 
                 <div style={styles.vsText}>vs</div>
 
-                {/* Team B Score */}
                 <div style={styles.teamScore}>
                   <div style={styles.teamScoreLabel}>
                     {match.teamB?.teamName || "Team B"}
@@ -410,7 +505,6 @@ export default function EventMatches() {
                 </div>
               </div>
 
-              {/* Live Match Extra Info */}
               {isLive && (
                 <div style={styles.liveScoreInfo}>
                   <span style={{
@@ -427,7 +521,6 @@ export default function EventMatches() {
                 </div>
               )}
 
-              {/* Completed Match Winner */}
               {isCompleted && (
                 <div style={{
                   ...styles.matchInfo,
@@ -482,7 +575,6 @@ export default function EventMatches() {
           `}
         </style>
 
-        {/* Refresh Indicator */}
         {loading && matches.length > 0 && (
           <div style={styles.refreshIndicator}>🔄 Updating...</div>
         )}
