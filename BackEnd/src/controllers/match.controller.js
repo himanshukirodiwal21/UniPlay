@@ -229,7 +229,7 @@ export const generateEventSchedule = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   📋 Get All Matches (with Auto Live Detection)
+   📋 Get All Matches (✅ WITH AUTO-STATUS UPDATE)
 -------------------------------------------------------- */
 export const getMatches = async (req, res) => {
   try {
@@ -238,9 +238,34 @@ export const getMatches = async (req, res) => {
     
     if (event) filter.event = event;
 
-    // ✅ Get all matches (let frontend handle time-based filtering for better accuracy)
+    // ✅ STEP 1: Auto-update Scheduled matches to InProgress if time has passed
+    const now = new Date();
+    
+    // Find all scheduled matches whose time has passed
+    const pastScheduledMatches = await Match.find({
+      status: "Scheduled",
+      scheduledTime: { $lte: now }
+    });
+
+    if (pastScheduledMatches.length > 0) {
+      console.log(`\n🔄 Auto-updating ${pastScheduledMatches.length} past scheduled matches to InProgress`);
+      
+      // Update to InProgress
+      const updateResult = await Match.updateMany(
+        {
+          status: "Scheduled",
+          scheduledTime: { $lte: now }
+        },
+        {
+          $set: { status: "InProgress" }
+        }
+      );
+
+      console.log(`✅ Updated ${updateResult.modifiedCount} matches to InProgress`);
+    }
+
+    // ✅ STEP 2: Now fetch matches with updated status
     if (status) {
-      // Only filter by status if explicitly requested
       filter.status = status;
     }
 
@@ -259,6 +284,8 @@ export const getMatches = async (req, res) => {
       })
       .populate("event", "name")
       .sort({ scheduledTime: 1 });
+
+    console.log(`📊 Returning ${matches.length} matches (status: ${status || 'all'})`);
 
     res.status(200).json({
       success: true,
