@@ -14,7 +14,6 @@ const PointsTable = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        // ✅ Fetch events from the correct endpoint
         const res = await fetch("http://localhost:8000/api/v1/events");
         
         if (!res.ok) {
@@ -29,7 +28,6 @@ const PointsTable = () => {
         const data = await res.json();
         console.log("📊 Fetched Events Response:", data);
 
-        // Handle different response formats
         const allEvents = Array.isArray(data.data) 
           ? data.data 
           : (Array.isArray(data) ? data : []);
@@ -37,7 +35,6 @@ const PointsTable = () => {
         console.log(`✅ Found ${allEvents.length} events`);
         setEvents(allEvents);
 
-        // Auto-select the latest event
         if (allEvents.length > 0) {
           const latest = [...allEvents].sort(
             (a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0)
@@ -57,69 +54,242 @@ const PointsTable = () => {
     fetchEvents();
   }, []);
 
-  // 🧩 STEP 2: Fetch leaderboard whenever selected event changes
+  // 🧩 STEP 2: Calculate leaderboard from completed matches
   useEffect(() => {
     if (!selectedEvent) {
       setLoading(false);
       return;
     }
 
-    const fetchLeaderboard = async () => {
+    const calculateLeaderboard = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        console.log(`📊 Fetching leaderboard for event: ${selectedEvent.name} (${selectedEvent._id})`);
+        console.log(`📊 Calculating leaderboard for event: ${selectedEvent.name} (${selectedEvent._id})`);
 
-        // ✅ Try the match routes endpoint first
-        const url = `http://localhost:8000/api/v1/matches/events/${selectedEvent._id}/leaderboard`;
+        // Fetch all completed matches for this event
+        const url = `http://localhost:8000/api/v1/matches?status=Completed&event=${selectedEvent._id}`;
         console.log('🔗 Request URL:', url);
         
         const res = await fetch(url);
 
-        console.log('📡 Response status:', res.status);
-        console.log('📡 Response headers:', Object.fromEntries(res.headers.entries()));
-
         if (!res.ok) {
-          // Try to get error details from response
           const errorText = await res.text();
           console.error('❌ Error response:', errorText);
-          
-          try {
-            const errorJson = JSON.parse(errorText);
-            throw new Error(errorJson.message || `HTTP error! status: ${res.status}`);
-          } catch (parseError) {
-            throw new Error(`HTTP error! status: ${res.status} - ${errorText}`);
-          }
-        }
-
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const responseText = await res.text();
-          console.error('❌ Non-JSON response:', responseText);
-          throw new Error("Invalid response (not JSON)");
+          throw new Error(`HTTP error! status: ${res.status}`);
         }
 
         const data = await res.json();
-        console.log("📊 Fetched Leaderboard Response:", data);
+        console.log("📊 Fetched Completed Matches:", data);
 
-        // Handle the response data
-        const leaderboardData = data.data || data.leaderboard || [];
-        console.log(`✅ Found ${leaderboardData.length} teams in leaderboard`);
-        
+        const completedMatches = data.data || [];
+        console.log(`✅ Found ${completedMatches.length} completed matches`);
+
+        // Fetch live data for each match to get accurate scores
+        const matchesWithScores = await Promise.all(
+          completedMatches.map(async (match) => {
+            try {
+              const liveResponse = await fetch(`http://localhost:8000/api/v1/live-matches/${match._id}`);
+              const liveData = await liveResponse.json();
+              
+              if (liveData.success && liveData.data.innings) {
+                const innings = liveData.data.innings;
+                
+                // Get scores for both teams from all innings
+                const getTeamStats = (teamId) => {
+                  let totalRuns = 0;
+                  let totalOvers = 0;
+                  
+                  innings.forEach(inning => {
+                    if (inning.battingTeam?._id?.toString() === teamId?.toString()) {
+                      totalRuns += inning.score || 0;
+                      totalOvers += inning.overs || 0;
+                    }
+                  });
+                  
+                  return { runs: totalRuns, overs: totalOvers };
+                };
+
+                const teamAStats = getTeamStats(match.teamA?._id);
+                const teamBStats = getTeamStats(match.teamB?._id);
+
+                console.log(`Match ${match.teamA?.teamName} vs ${match.teamB?.teamName}:`, {
+                  teamA: teamAStats,
+                  teamB: teamBStats
+                });
+
+                return {
+                  ...match,
+                  teamAScore: teamAStats.runs,
+                  teamAOvers: teamAStats.overs,
+                  teamBScore: teamBStats.runs,
+                  teamBOvers: teamBStats.overs,
+                };
+              }
+              
+              // Fallback to match data if live data not available
+              return {
+                ...match,
+                teamAScore: match.scoreA || 0,
+                teamAOvers: match.oversA || 0,
+                teamBScore: match.scoreB || 0,
+                teamBOvers: match.oversB || 0,
+              };
+            } catch (err) {
+              console.error(`Error fetching live data for match ${match._id}:`, err);
+              return {
+                ...match,
+                teamAScore: match.scoreA || 0,
+                teamAOvers: match.oversA || 0,
+                teamBScore: match.scoreB || 0,
+                teamBOvers: match.oversB || 0,
+              };
+            }
+          })
+        );
+
+        // Calculate points for each team
+        const teamStats = {};
+
+        matchesWithScores.forEach(match => {
+          const teamA = match.teamA;
+          const teamB = match.teamB;
+          const winner = match.winner;
+
+          if (!teamA || !teamB) return;
+
+          // Initialize team stats if not exists
+          if (!teamStats[teamA._id]) {
+            teamStats[teamA._id] = {
+              team: teamA,
+              matchesPlayed: 0,
+              wins: 0,
+              losses: 0,
+              draws: 0,
+              points: 0,
+              totalRunsScored: 0,
+              totalOversPlayed: 0,
+              totalRunsConceded: 0,
+              totalOversBowled: 0
+            };
+          }
+
+          if (!teamStats[teamB._id]) {
+            teamStats[teamB._id] = {
+              team: teamB,
+              matchesPlayed: 0,
+              wins: 0,
+              losses: 0,
+              draws: 0,
+              points: 0,
+              totalRunsScored: 0,
+              totalOversPlayed: 0,
+              totalRunsConceded: 0,
+              totalOversBowled: 0
+            };
+          }
+
+          // Update matches played
+          teamStats[teamA._id].matchesPlayed++;
+          teamStats[teamB._id].matchesPlayed++;
+
+          // Update run rate stats
+          const scoreA = match.teamAScore || 0;
+          const scoreB = match.teamBScore || 0;
+          const oversA = match.teamAOvers || 0;
+          const oversB = match.teamBOvers || 0;
+
+          console.log(`Processing: ${teamA.teamName} ${scoreA}/${oversA} vs ${teamB.teamName} ${scoreB}/${oversB}`);
+
+          // Team A stats
+          teamStats[teamA._id].totalRunsScored += scoreA;
+          teamStats[teamA._id].totalOversPlayed += oversA;
+          teamStats[teamA._id].totalRunsConceded += scoreB;
+          teamStats[teamA._id].totalOversBowled += oversB;
+
+          // Team B stats
+          teamStats[teamB._id].totalRunsScored += scoreB;
+          teamStats[teamB._id].totalOversPlayed += oversB;
+          teamStats[teamB._id].totalRunsConceded += scoreA;
+          teamStats[teamB._id].totalOversBowled += oversA;
+
+          // Determine result and update points
+          if (winner) {
+            if (winner._id === teamA._id) {
+              // Team A won
+              teamStats[teamA._id].wins++;
+              teamStats[teamA._id].points += 2;
+              teamStats[teamB._id].losses++;
+              // No negative points for loss
+            } else if (winner._id === teamB._id) {
+              // Team B won
+              teamStats[teamB._id].wins++;
+              teamStats[teamB._id].points += 2;
+              teamStats[teamA._id].losses++;
+              // No negative points for loss
+            }
+          } else {
+            // Draw/Tie
+            teamStats[teamA._id].draws++;
+            teamStats[teamA._id].points += 1;
+            teamStats[teamB._id].draws++;
+            teamStats[teamB._id].points += 1;
+          }
+        });
+
+        // Calculate NRR for each team
+        Object.values(teamStats).forEach(team => {
+          const runRateFor = team.totalOversPlayed > 0 
+            ? team.totalRunsScored / team.totalOversPlayed 
+            : 0;
+          const runRateAgainst = team.totalOversBowled > 0 
+            ? team.totalRunsConceded / team.totalOversBowled 
+            : 0;
+          team.nrr = runRateFor - runRateAgainst;
+          
+          console.log(`${team.team.teamName} NRR:`, {
+            runsScored: team.totalRunsScored,
+            oversPlayed: team.totalOversPlayed,
+            runsConceded: team.totalRunsConceded,
+            oversBowled: team.totalOversBowled,
+            runRateFor: runRateFor.toFixed(3),
+            runRateAgainst: runRateAgainst.toFixed(3),
+            nrr: team.nrr.toFixed(3)
+          });
+        });
+
+        // Convert to array and sort by points (descending)
+        const leaderboardData = Object.values(teamStats).sort((a, b) => {
+          if (b.points !== a.points) {
+            return b.points - a.points;
+          }
+          // If points are equal, sort by NRR
+          if (Math.abs(b.nrr - a.nrr) > 0.001) {
+            return b.nrr - a.nrr;
+          }
+          // If NRR is equal, sort by wins
+          if (b.wins !== a.wins) {
+            return b.wins - a.wins;
+          }
+          // If wins are equal, sort by matches played (fewer is better)
+          return a.matchesPlayed - b.matchesPlayed;
+        });
+
+        console.log(`✅ Calculated leaderboard with ${leaderboardData.length} teams`);
         setLeaderboard(leaderboardData);
       } catch (err) {
-        console.error("❌ Error fetching leaderboard:", err);
+        console.error("❌ Error calculating leaderboard:", err);
         setError(err.message || "Failed to load leaderboard");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLeaderboard();
+    calculateLeaderboard();
 
-    // Optional: refresh every 30s (changed from 10s to reduce load)
-    const interval = setInterval(fetchLeaderboard, 30000);
+    // Optional: refresh every 30s
+    const interval = setInterval(calculateLeaderboard, 30000);
     return () => clearInterval(interval);
   }, [selectedEvent]);
 
@@ -204,6 +374,9 @@ const PointsTable = () => {
             <h2 style={{ marginBottom: "1rem" }}>
               {selectedEvent.name} - Leaderboard
             </h2>
+            
+            {/* Points System Info */}
+
             <div className="table-container">
               <table className="points-table">
                 <thead>
@@ -214,24 +387,36 @@ const PointsTable = () => {
                     <th>Wins</th>
                     <th>Losses</th>
                     <th>Draws</th>
+                    <th>NRR</th>
                     <th>Points</th>
                   </tr>
                 </thead>
                 <tbody>
                   {leaderboard.map((entry, index) => (
-                    <tr key={entry.team?._id || entry._id || index}>
+                    <tr key={entry.team?._id || index}>
                       <td>
                         <strong>{index + 1}</strong>
                       </td>
                       <td>
                         <strong>{entry.team?.teamName || "Unknown Team"}</strong>
                       </td>
-                      <td>{entry.matchesPlayed || 0}</td>
-                      <td>{entry.wins || 0}</td>
-                      <td>{entry.losses || 0}</td>
-                      <td>{entry.draws || 0}</td>
+                      <td>{entry.matchesPlayed}</td>
+                      <td style={{ color: "#16a34a", fontWeight: "600" }}>{entry.wins}</td>
+                      <td style={{ color: "#dc2626", fontWeight: "600" }}>{entry.losses}</td>
+                      <td style={{ color: "#2563eb", fontWeight: "600" }}>{entry.draws}</td>
+                      <td style={{ 
+                        color: entry.nrr > 0 ? "#16a34a" : entry.nrr < 0 ? "#dc2626" : "#6b7280",
+                        fontWeight: "600"
+                      }}>
+                        {entry.nrr > 0 ? "+" : ""}{entry.nrr.toFixed(3)}
+                      </td>
                       <td>
-                        <strong>{entry.points || 0}</strong>
+                        <strong style={{ 
+                          color: entry.points > 0 ? "#16a34a" : entry.points < 0 ? "#dc2626" : "#6b7280",
+                          fontSize: "1.1rem"
+                        }}>
+                          {entry.points > 0 ? "+" : ""}{entry.points}
+                        </strong>
                       </td>
                     </tr>
                   ))}
