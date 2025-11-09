@@ -9,15 +9,15 @@ const matchSchema = new mongoose.Schema(
       required: true,
     },
 
-    // ⚔️ Competing teams - ✅ FIXED: Changed ref from "Team" to "TeamRegistration"
+    // ⚔️ Competing teams
     teamA: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "TeamRegistration",  // ✅ Changed from "Team"
+      ref: "TeamRegistration",
       required: true,
     },
     teamB: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "TeamRegistration",  // ✅ Changed from "Team"
+      ref: "TeamRegistration",
       required: true,
     },
 
@@ -53,10 +53,10 @@ const matchSchema = new mongoose.Schema(
       min: 0,
     },
 
-    // 🏆 Winner reference - ✅ FIXED: Changed ref from "Team" to "TeamRegistration"
+    // 🏆 Winner reference
     winner: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "TeamRegistration",  // ✅ Changed from "Team"
+      ref: "TeamRegistration",
       default: null,
     },
 
@@ -70,6 +70,52 @@ const matchSchema = new mongoose.Schema(
       default: "TBD",
       trim: true,
     },
+
+    // ✅ NEW: Innings data for player stats tracking
+    innings: [
+      {
+        battingTeam: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "TeamRegistration",
+        },
+        bowlingTeam: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "TeamRegistration",
+        },
+        batsmen: [
+          {
+            playerId: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "Player",
+            },
+            playerName: String,
+            runs: { type: Number, default: 0 },
+            balls: { type: Number, default: 0 },
+            fours: { type: Number, default: 0 },
+            sixes: { type: Number, default: 0 },
+            isOut: { type: Boolean, default: false },
+            dismissalType: String, // "Bowled", "Caught", "LBW", etc.
+          },
+        ],
+        bowlers: [
+          {
+            playerId: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "Player",
+            },
+            playerName: String,
+            overs: { type: Number, default: 0 },
+            balls: { type: Number, default: 0 },
+            runs: { type: Number, default: 0 },
+            wickets: { type: Number, default: 0 },
+            maidens: { type: Number, default: 0 },
+          },
+        ],
+        totalRuns: { type: Number, default: 0 },
+        totalWickets: { type: Number, default: 0 },
+        totalOvers: { type: Number, default: 0 },
+      },
+    ],
   },
   { timestamps: true }
 );

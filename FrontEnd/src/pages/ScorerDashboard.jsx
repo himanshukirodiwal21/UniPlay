@@ -1384,70 +1384,133 @@ export default function ScorerDashboard() {
   };
 
 
-  // --- UPDATED handleEndInnings ---
-  const handleEndInnings = async () => {
-    const currentInnings =
-      liveMatchData.innings[liveMatchData.currentInnings - 1];
-    const totalOvers = liveMatchData.totalOvers || 20;
+  // --- ✅ UPDATED handleEndInnings WITH INNINGS DATA ---
+const handleEndInnings = async () => {
+  const currentInnings =
+    liveMatchData.innings[liveMatchData.currentInnings - 1];
+  const totalOvers = liveMatchData.totalOvers || 20;
 
-    if (currentInnings.wickets >= 10 || currentInnings.overs >= totalOvers) {
-      console.log(
-        `✅ Innings ${liveMatchData.currentInnings} auto-complete triggered`
-      );
-    } else {
-      const confirmEnd = window.confirm(
-        `Are you sure you want to end this innings early?\n\n` +
-          `Current: ${currentInnings.score}/${currentInnings.wickets} in ${currentInnings.overs} overs\n\n` +
-          `Note: Innings not yet complete (less than ${totalOvers} overs or 10 wickets).`
-      );
-      if (!confirmEnd) return;
+  if (currentInnings.wickets >= 10 || currentInnings.overs >= totalOvers) {
+    console.log(
+      `✅ Innings ${liveMatchData.currentInnings} auto-complete triggered`
+    );
+  } else {
+    const confirmEnd = window.confirm(
+      `Are you sure you want to end this innings early?\n\n` +
+        `Current: ${currentInnings.score}/${currentInnings.wickets} in ${currentInnings.overs} overs\n\n` +
+        `Note: Innings not yet complete (less than ${totalOvers} overs or 10 wickets).`
+    );
+    if (!confirmEnd) return;
+  }
+
+  try {
+    setScoringLoading(true);
+
+    // ✅ NEW: Prepare innings data for match completion
+    const innings1 = liveMatchData.innings[0];
+    const innings2 = liveMatchData.innings[1] || null;
+
+    const inningsData = {
+      innings: [
+        {
+          battingTeamId: innings1.battingTeam?._id,
+          bowlingTeamId: innings1.bowlingTeam?._id,
+          score: innings1.score || 0,
+          wickets: innings1.wickets || 0,
+          overs: innings1.overs || 0,
+          ballByBall: innings1.ballByBall || [],
+        },
+      ],
+    };
+
+    // Add second innings if exists
+    if (innings2) {
+      inningsData.innings.push({
+        battingTeamId: innings2.battingTeam?._id,
+        bowlingTeamId: innings2.bowlingTeam?._id,
+        score: innings2.score || 0,
+        wickets: innings2.wickets || 0,
+        overs: innings2.overs || 0,
+        ballByBall: innings2.ballByBall || [],
+      });
     }
 
-    try {
-      setScoringLoading(true);
+    console.log("📤 Sending innings data:", inningsData);
 
-      const response = await fetch(
-        `${BACKEND_URL}/api/v1/live-matches/${currentMatch._id}/complete-innings`,
+    // ✅ First complete the innings
+    const response = await fetch(
+      `${BACKEND_URL}/api/v1/live-matches/${currentMatch._id}/complete-innings`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to end innings");
+    }
+
+    const result = await response.json();
+    console.log("✅ Innings ended:", result);
+
+    // ✅ If this was the LAST innings (2nd innings), complete the match WITH innings data
+    if (liveMatchData.currentInnings === 2) {
+      console.log("🏆 Completing match with innings data...");
+      
+      const completeResponse = await fetch(
+        `${BACKEND_URL}/api/v1/matches/${currentMatch._id}`,
         {
-          method: "POST",
+          method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
+          body: JSON.stringify({
+            status: "Completed",
+            ...inningsData, // ✅ Send innings data
+          }),
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to end innings");
+      if (!completeResponse.ok) {
+        const errorData = await completeResponse.json();
+        throw new Error(errorData.message || "Failed to complete match");
       }
 
-      const result = await response.json();
-      console.log("✅ Innings ended:", result);
+      const completeResult = await completeResponse.json();
+      console.log("✅ Match completed with player stats:", completeResult);
 
-      // Clear fields AND player lists for next innings
-      setOnStrikeBatsman("");
-      setNonStrikeBatsman("");
-      setCurrentBowler("");
-      setBattingTeamPlayers([]);
-      setBowlingTeamPlayers([]);
-      setLastOver(0); // Reset over count
-      setLastBalls([]);
-
-      if (liveMatchData.currentInnings === 1) {
-        alert("✅ First innings ended! Starting second innings...");
-      } else {
-        alert("🏆 Second innings ended! Match completed!");
-      }
-
-      // Refresh latest match state (this will trigger player fetch)
-      await fetchLiveMatchData();
-    } catch (err) {
-      console.error("❌ Error ending innings:", err);
-      alert(`Error: ${err.message}`);
-    } finally {
-      setScoringLoading(false);
+      alert("🏆 Match completed! Player stats updated! Redirecting...");
+      
+      setTimeout(() => {
+        handleBackToDashboard();
+      }, 2000);
+      
+      return; // Exit early for match completion
     }
-  };
+
+    // ✅ Clear fields AND player lists for next innings
+    setOnStrikeBatsman("");
+    setNonStrikeBatsman("");
+    setCurrentBowler("");
+    setBattingTeamPlayers([]);
+    setBowlingTeamPlayers([]);
+    setLastOver(0);
+    setLastBalls([]);
+
+    alert("✅ First innings ended! Starting second innings...");
+
+    // Refresh latest match state (this will trigger player fetch)
+    await fetchLiveMatchData();
+  } catch (err) {
+    console.error("❌ Error ending innings:", err);
+    alert(`Error: ${err.message}`);
+  } finally {
+    setScoringLoading(false);
+  }
+};
 
   // This function stays inside as it depends on state
   const renderMatches = () => {

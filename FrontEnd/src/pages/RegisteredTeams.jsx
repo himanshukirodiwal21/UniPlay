@@ -31,6 +31,7 @@ export default function RegisteredTeams() {
       
       if (!response.ok) throw new Error('Failed to fetch teams for this event');
       const data = await response.json();
+      console.log("📦 Teams data from API:", data);
       setTeams(data.data || data);
       setLoading(false);
     } catch (err) {
@@ -43,11 +44,47 @@ export default function RegisteredTeams() {
     setExpandedTeam(expandedTeam === teamId ? null : teamId);
   };
 
-  const handlePlayerClick = (playerId) => {
-    if (playerId) {
-      navigate(`/players/${playerId}`);
-    } else {
-      console.error("Player ID is missing, cannot navigate.");
+  // ✅ FIXED: Handle player click properly
+  const handlePlayerClick = async (playerName) => {
+    console.log("🎯 Player clicked, name:", playerName);
+    
+    if (!playerName || typeof playerName !== 'string') {
+      console.error("❌ Invalid player name:", playerName);
+      alert("Player information is missing");
+      return;
+    }
+
+    console.log("🔍 Searching for player in database:", playerName);
+
+    try {
+      // Fetch all players
+      const response = await fetch(`http://localhost:8000/api/v1/players`);
+      if (!response.ok) throw new Error('Failed to fetch players');
+      
+      const data = await response.json();
+      console.log("📦 All players response:", data);
+      
+      const players = data.data || data;
+      console.log("📦 Total players:", players.length);
+      
+      // Find player by name (case-insensitive, trimmed)
+      const foundPlayer = players.find(p => 
+        p.name.toLowerCase().trim() === playerName.toLowerCase().trim()
+      );
+
+      console.log("🔍 Search result:", foundPlayer);
+
+      if (foundPlayer && foundPlayer._id) {
+        console.log("✅ Found player, navigating to:", foundPlayer._id);
+        navigate(`/players/${foundPlayer._id}`);
+      } else {
+        console.error("❌ Player not found in database:", playerName);
+        console.log("Available players:", players.map(p => p.name));
+        alert(`Profile not available for "${playerName}". This player hasn't been registered yet.`);
+      }
+    } catch (error) {
+      console.error("❌ Error finding player:", error);
+      alert("Unable to load player profile. Check console for details.");
     }
   };
 
@@ -58,7 +95,6 @@ export default function RegisteredTeams() {
     return matchesSearch;
   });
 
-  // ... (loading and error JSX remains the same) ...
   if (loading) {
     return (
       <>
@@ -93,7 +129,6 @@ export default function RegisteredTeams() {
     <>
       <Header />
       <div className="teams-container">
-        {/* ... (hero section remains the same) ... */}
         <div className="teams-hero">
           <button onClick={() => navigate(-1)} className="back-button">
             <ArrowLeft size={20} />
@@ -109,7 +144,6 @@ export default function RegisteredTeams() {
         </div>
 
         <div className="teams-main">
-          {/* ... (search section remains the same) ... */}
           <div className="controls-section">
             <div className="search-box">
               <Search size={20} />
@@ -123,9 +157,7 @@ export default function RegisteredTeams() {
             </div>
           </div>
 
-          {/* Teams List */}
           {filteredTeams.length === 0 ? (
-            // ... (empty state remains the same) ...
             <div className="empty-state">
               <Users size={64} />
               <h3>No teams found</h3>
@@ -135,7 +167,6 @@ export default function RegisteredTeams() {
             <div className="teams-grid">
               {filteredTeams.map((team) => (
                 <div key={team._id || team.id} className="team-card">
-                  {/* ... (team header remains the same) ... */}
                   <div className="team-header" onClick={() => toggleTeamExpansion(team._id || team.id)}>
                     <div className="team-header-content">
                       <Trophy className="team-icon" size={24} />
@@ -153,7 +184,6 @@ export default function RegisteredTeams() {
                     </button>
                   </div>
                   
-                  {/* ... (captain summary remains the same) ... */}
                   <div className="captain-summary">
                     <h3 className="section-subtitle">
                       <Users size={18} />
@@ -195,7 +225,6 @@ export default function RegisteredTeams() {
                     </div>
                   </div>
 
-                  {/* Expanded Content - Players List */}
                   {expandedTeam === (team._id || team.id) && (
                     <div className="team-expanded">
                       <h3 className="section-subtitle">
@@ -216,22 +245,25 @@ export default function RegisteredTeams() {
                           </thead>
                           <tbody>
                             {team.players?.map((player, index) => {
+                              // Debug: Check player object structure
+                              console.log(`Player ${index + 1}:`, player);
                               
-                              // ✅ THIS IS THE ONLY CHANGE
-                              // This will show you what 'player' object you're clicking on.
-                              console.log("Player object from team:", player); 
-
                               return (
-                                <tr key={player._id || index} className={`
-                                  ${player.isCaptain ? 'captain-row' : ''}
-                                  ${player.isViceCaptain ? 'vice-captain-row' : ''}
-                                `}>
+                                <tr 
+                                  key={player._id || index} 
+                                  className={`
+                                    ${player.isCaptain ? 'captain-row' : ''}
+                                    ${player.isViceCaptain ? 'vice-captain-row' : ''}
+                                  `}
+                                >
                                   <td className="player-number">{index + 1}</td>
                                   
+                                  {/* ✅ FIXED: Pass player.name as string */}
                                   <td 
                                     className="player-name player-link"
-                                    onClick={() => handlePlayerClick(player._id)}
+                                    onClick={() => handlePlayerClick(player.name)}
                                     title={`View ${player.name}'s profile`}
+                                    style={{ cursor: 'pointer' }}
                                   >
                                     {player.name}
                                     {player.isCaptain && <span className="badge badge-captain">C</span>}
@@ -256,7 +288,6 @@ export default function RegisteredTeams() {
                         </table>
                       </div>
 
-                      {/* ... (team stats section remains the same) ... */}
                       <div className="team-stats">
                         <h4 className="stats-title">Team Composition</h4>
                         <div className="stats-grid">

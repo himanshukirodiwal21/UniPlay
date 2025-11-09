@@ -1,6 +1,7 @@
 import Match from "../models/match.model.js";
 import { Event } from "../models/event.model.js";
 import TeamRegistration from "../models/teamRegistration.model.js";
+import { Player } from "../models/player.model.js"; // ✅ NEW IMPORT
 
 /* -------------------------------------------------------
    ⚙️ Utility: Generate Round Robin Schedule
@@ -326,28 +327,151 @@ export const getMatchById = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   🕹️ Update Match
+   🕹️ Update Match - ✅ WITH PLAYER STATS UPDATE
 -------------------------------------------------------- */
 export const updateMatch = async (req, res) => {
   try {
-    const { status, scoreA, scoreB, winner } = req.body;
+    const { status, scoreA, scoreB, winner, innings } = req.body;
+
+    console.log('\n🎯 Updating match:', req.params.id);
+    console.log('📊 Request body:', { 
+      status, 
+      scoreA, 
+      scoreB, 
+      winner, 
+      hasInnings: !!innings,
+      inningsCount: innings?.length || 0 
+    });
 
     const match = await Match.findByIdAndUpdate(
       req.params.id,
-      { status, scoreA, scoreB, winner },
+      { status, scoreA, scoreB, winner, innings },
       { new: true }
     )
-      .populate("teamA", "teamName")
-      .populate("teamB", "teamName")
+      .populate("teamA", "teamName players")
+      .populate("teamB", "teamName players")
       .populate("winner", "teamName")
       .populate("event", "name");
 
-    if (!match)
+    if (!match) {
       return res.status(404).json({ 
         success: false,
         message: "Match not found" 
       });
+    }
 
+    // ✅ CRITICAL: Update player stats when match is completed
+    if (status === "Completed" && innings && innings.length > 0) {
+      console.log('\n🔄 Processing player stats update...');
+      
+      try {
+        // Process each innings
+        for (const inning of innings) {
+          console.log(`\n📊 Processing innings for team: ${inning.battingTeam}`);
+          
+          // ✅ Update batting stats
+          if (inning.batsmen && inning.batsmen.length > 0) {
+            for (const batsman of inning.batsmen) {
+              if (!batsman.playerId) {
+                console.log(`⚠️ Skipping batsman without playerId:`, batsman.playerName);
+                continue;
+              }
+
+              console.log(`🏏 Updating batsman: ${batsman.playerName}`);
+              
+              const player = await Player.findById(batsman.playerId);
+              
+              if (!player) {
+                console.log(`❌ Player not found: ${batsman.playerId}`);
+                continue;
+              }
+
+              // Update batting stats
+              player.battingStats.matchesPlayed += 1;
+              player.battingStats.innings += 1;
+              player.battingStats.totalRuns += batsman.runs || 0;
+              player.battingStats.ballsFaced += batsman.balls || 0;
+              
+              // Check for dismissal
+              if (batsman.isOut) {
+                player.battingStats.outs += 1;
+              }
+
+              // Check for milestones
+              if (batsman.runs >= 50 && batsman.runs < 100) {
+                player.battingStats.fifties += 1;
+              }
+              if (batsman.runs >= 100) {
+                player.battingStats.hundreds += 1;
+              }
+
+              // Update high score
+              if (batsman.runs > player.battingStats.highScore) {
+                player.battingStats.highScore = batsman.runs;
+              }
+
+              await player.save();
+              console.log(`✅ Updated batting stats for ${player.name}:`, {
+                runs: batsman.runs,
+                balls: batsman.balls,
+                totalRuns: player.battingStats.totalRuns,
+                totalBalls: player.battingStats.ballsFaced
+              });
+            }
+          }
+
+          // ✅ Update bowling stats
+          if (inning.bowlers && inning.bowlers.length > 0) {
+            for (const bowler of inning.bowlers) {
+              if (!bowler.playerId) {
+                console.log(`⚠️ Skipping bowler without playerId:`, bowler.playerName);
+                continue;
+              }
+
+              console.log(`⚡ Updating bowler: ${bowler.playerName}`);
+              
+              const player = await Player.findById(bowler.playerId);
+              
+              if (!player) {
+                console.log(`❌ Player not found: ${bowler.playerId}`);
+                continue;
+              }
+
+              // Update bowling stats
+              player.bowlingStats.matchesPlayed += 1;
+              player.bowlingStats.innings += 1;
+              player.bowlingStats.ballsBowled += bowler.balls || 0;
+              player.bowlingStats.runsConceded += bowler.runs || 0;
+              player.bowlingStats.wicketsTaken += bowler.wickets || 0;
+
+              // Check for 5-wicket haul
+              if (bowler.wickets >= 5) {
+                player.bowlingStats.fiveWicketHauls += 1;
+              }
+
+              await player.save();
+              console.log(`✅ Updated bowling stats for ${player.name}:`, {
+                wickets: bowler.wickets,
+                balls: bowler.balls,
+                totalWickets: player.bowlingStats.wicketsTaken,
+                totalBalls: player.bowlingStats.ballsBowled
+              });
+            }
+          }
+        }
+        
+        console.log('✅ All player stats updated successfully!');
+        
+      } catch (statsError) {
+        console.error('❌ Error updating player stats:', statsError);
+        console.error('Stack trace:', statsError.stack);
+        // Don't fail the whole request, just log the error
+      }
+    } else if (status === "Completed") {
+      console.log('⚠️ Match completed but no innings data provided - player stats NOT updated');
+    }
+
+    // ✅ Update leaderboard (existing code)
     if (status === "Completed" && winner && match.stage === "RoundRobin") {
       const event = await Event.findById(match.event);
       
@@ -375,19 +499,22 @@ export const updateMatch = async (req, res) => {
 
         event.leaderboard.sort((a, b) => b.points - a.points);
         await event.save();
+        console.log('✅ Leaderboard updated');
       }
     }
 
     res.status(200).json({
       success: true,
-      message: "✅ Match updated",
+      message: "✅ Match updated successfully (including player stats)",
       data: match,
     });
   } catch (err) {
     console.error("❌ Error updating match:", err);
+    console.error("Stack trace:", err.stack);
     res.status(500).json({ 
       success: false,
-      message: "Server error" 
+      message: "Server error",
+      error: err.message
     });
   }
 };

@@ -3,6 +3,11 @@
 import mongoose from "mongoose";
 
 const playerSchema = new mongoose.Schema({
+  playerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Player",
+    required: false  // Optional for backward compatibility
+  },
   name: {
     type: String,
     required: [true, "Player name is required"],
@@ -38,8 +43,8 @@ const teamRegistrationSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: false, // ✅ YE CHANGE KARO - false kar do
-      default: null    // ✅ YE BHI ADD KARO
+      required: false,
+      default: null
     },
     teamName: {
       type: String,

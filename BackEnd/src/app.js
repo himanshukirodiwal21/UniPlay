@@ -23,7 +23,7 @@ import adminRouter from './routes/admin.routes.js';
 import teamRegistrationRoutes from "./routes/teamRegistration.routes.js";
 import matchRoutes from "./routes/match.routes.js";
 import liveMatchRoutes from "./routes/liveMatch.routes.js"; // ✨ NEW
-import playerRouter from "./routes/player.router.js";
+import playerRouter from "./routes/player.routes.js";
 
 // ✅ Routes declaration
 app.use("/api/v1/users", userRouter);

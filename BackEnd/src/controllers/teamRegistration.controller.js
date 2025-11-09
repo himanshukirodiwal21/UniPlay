@@ -1,6 +1,6 @@
 import TeamRegistration from "../models/teamRegistration.model.js";
 import { Event } from "../models/event.model.js";
-import { Player } from "../models/player.model.js"; // ✅ 1. Import the new Player model
+import { Player } from "../models/player.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -16,7 +16,7 @@ export const registerTeam = asyncHandler(async (req, res) => {
     captainEmail,
     captainPhone,
     captainCollege,
-    players, // ✅ Assuming this is an array like [{ name: "Himanshu" }, { name: "Rahul" }]
+    players,
   } = req.body;
 
   console.log("📥 Received registration request:", {
@@ -38,7 +38,6 @@ export const registerTeam = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All captain and team details are required");
   }
 
-  // ✅ Assuming 11-15 players is more realistic, but keeping your 15-player rule
   if (!players || players.length !== 15) {
     throw new ApiError(400, "Team must have exactly 15 players");
   }
@@ -56,40 +55,7 @@ export const registerTeam = asyncHandler(async (req, res) => {
     );
   }
 
-  // --- ⬇️ 2. NEW LOGIC TO FIND/CREATE PLAYERS ⬇️ ---
-
-  // Use Promise.all to handle all player lookups/creations concurrently
-  const playerIds = await Promise.all(
-    players.map(async (player) => {
-      if (!player.name) {
-        throw new ApiError(400, "All players must have a name.");
-      }
-
-      // Find a player by name OR create them if they don't exist.
-      const savedPlayer = await Player.findOneAndUpdate(
-        { name: player.name.trim() }, // Find by name
-        {
-          $setOnInsert: {
-            // Only set these fields on creation
-            name: player.name.trim(),
-            role: player.role || "all-rounder", // Use role if provided
-            battingStats: {}, // Set default empty stats
-            bowlingStats: {},
-          },
-        },
-        {
-          upsert: true, // Create if not found
-          new: true, // Return the new/found document
-        }
-      );
-
-      return savedPlayer._id; // Return the ID
-    })
-  );
-
-  // --- ⬆️ END OF NEW LOGIC ⬆️ ---
-
-  // Create team registration with the array of Player IDs
+  // ✅ STEP 1: Create team registration with full player subdocuments
   const teamRegistration = await TeamRegistration.create({
     eventId,
     teamName,
@@ -97,17 +63,65 @@ export const registerTeam = asyncHandler(async (req, res) => {
     captainEmail,
     captainPhone,
     captainCollege,
-    players: playerIds, // ✅ 3. Save the array of IDs, not the original player array
+    players: players, // Full objects with name, role, year, etc.
   });
 
-  // ✅ 4. Optional: Add this team to each player's profile
-  await Player.updateMany(
-    { _id: { $in: playerIds } },
-    { $addToSet: { teams: teamRegistration._id } } // $addToSet prevents duplicates
+  console.log("✅ Team registered:", teamRegistration._id);
+
+  // ✅ STEP 2: Separately create/update Player documents for career tracking
+  const playerIds = await Promise.all(
+    players.map(async (player) => {
+      if (!player.name) {
+        console.warn("⚠️ Skipping player without name");
+        return null;
+      }
+
+      // Find player by name
+      let savedPlayer = await Player.findOne({ name: player.name.trim() });
+
+      if (!savedPlayer) {
+        // Create new player with proper stats
+        savedPlayer = await Player.create({
+          name: player.name.trim(),
+          teams: [],
+          battingStats: {
+            matchesPlayed: 0,
+            innings: 0,
+            totalRuns: 0,
+            ballsFaced: 0,
+            fifties: 0,
+            hundreds: 0,
+            highScore: 0,
+            outs: 0
+          },
+          bowlingStats: {
+            matchesPlayed: 0,
+            innings: 0,
+            ballsBowled: 0,
+            runsConceded: 0,
+            wicketsTaken: 0,
+            fiveWicketHauls: 0
+          }
+        });
+        console.log(`✅ New player created: ${savedPlayer.name} (${savedPlayer._id})`);
+      } else {
+        console.log(`✅ Existing player found: ${savedPlayer.name} (${savedPlayer._id})`);
+      }
+
+      return savedPlayer._id;
+    })
   );
 
+  // Remove null values
+  const validPlayerIds = playerIds.filter(id => id !== null);
 
-  console.log("✅ Team registered with player IDs:", teamRegistration._id);
+  // ✅ STEP 3: Add this team to each player's team history
+  await Player.updateMany(
+    { _id: { $in: validPlayerIds } },
+    { $addToSet: { teams: teamRegistration._id } }
+  );
+
+  console.log(`✅ Updated ${validPlayerIds.length} player profiles with team history`);
 
   res.status(201).json(
     new ApiResponse(201, teamRegistration, "Team registered successfully")
@@ -123,7 +137,6 @@ export const getTeamsByEvent = asyncHandler(async (req, res) => {
   const teams = await TeamRegistration.find({ eventId })
     .populate("userId", "name email")
     .populate("eventId", "name date location")
-    .populate("players", "name _id role") // ✅ 5. Populate player details
     .sort({ registrationDate: -1 });
 
   res.status(200).json(new ApiResponse(200, teams, "Teams fetched successfully"));
@@ -141,7 +154,6 @@ export const getMyRegistrations = asyncHandler(async (req, res) => {
 
   const registrations = await TeamRegistration.find({ userId })
     .populate("eventId", "name date location image")
-    .populate("players", "name _id role") // ✅ 5. Populate player details
     .sort({ registrationDate: -1 });
 
   res
@@ -163,8 +175,7 @@ export const getTeamRegistrationById = asyncHandler(async (req, res) => {
 
   const registration = await TeamRegistration.findById(id)
     .populate("userId", "name email")
-    .populate("eventId", "name date location")
-    .populate("players", "name _id role"); // ✅ 5. Populate player details
+    .populate("eventId", "name date location");
 
   if (!registration) {
     throw new ApiError(404, "Team registration not found");
@@ -181,10 +192,6 @@ export const getTeamRegistrationById = asyncHandler(async (req, res) => {
 export const updateTeamRegistration = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user?._id;
-
-  // ✅ TODO: If req.body.players is an array of names,
-  // you will need to re-run the "Find/Create Player" logic from registerTeam
-  // and convert it to an array of IDs before updating.
 
   const registration = await TeamRegistration.findById(id);
 
@@ -243,9 +250,13 @@ export const deleteTeamRegistration = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You are not authorized to delete this registration");
   }
 
-  // ✅ Optional: Also remove this team from all associated players
+  // ✅ Get player IDs from subdocuments and remove from Player collection
+  const playerIds = registration.players
+    .map(p => p.playerId)
+    .filter(id => id); // Remove undefined/null
+  
   await Player.updateMany(
-    { _id: { $in: registration.players } },
+    { _id: { $in: playerIds } },
     { $pull: { teams: registration._id } }
   );
 
@@ -289,8 +300,7 @@ export const updateRegistrationStatus = asyncHandler(async (req, res) => {
 // @access  Public
 export const getAllTeams = asyncHandler(async (req, res) => {
   const teams = await TeamRegistration.find({})
-    .populate("eventId", "name") // Optional: get event name
-    .populate("players", "name _id role") // ✅ 5. Populate player details
+    .populate("eventId", "name")
     .sort({ registrationDate: -1 });
 
   if (!teams) {
