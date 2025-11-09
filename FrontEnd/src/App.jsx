@@ -20,6 +20,8 @@ import RegisteredTeams from './pages/RegisteredTeams';
 import PointsTable from "./pages/PointsTable";
 import PlayerProfile from './pages/PlayerProfile';
 import TeamDetails from "./pages/TeamDetails";
+import NewsPage from './pages/NewsPage';
+
 
 
 
@@ -53,6 +55,7 @@ function App() {
       <Route path="/points-table" element={<PointsTable />} />
       <Route path="/players/:id" element={<PlayerProfile />} />
       <Route path="/team/:teamId" element={<TeamDetails />} />
+      <Route path="/news" element={<NewsPage />} />
 
 
       

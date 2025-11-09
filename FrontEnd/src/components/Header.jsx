@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { User, LogOut, Settings, Shield } from "lucide-react";
 import UniPlayLogo from "../assets/UniPlay.svg";
 
-
-
 function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [currentUser, setCurrentUser] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -27,6 +26,27 @@ function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Handle scroll to section with smart navigation
+  const handleScrollTo = (sectionId) => {
+    if (location.pathname === '/') {
+      // Already on homepage, just scroll
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } else {
+      // Navigate to homepage first, then scroll
+      navigate('/');
+      // Wait for navigation and DOM update
+      setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("currentUser");
     setCurrentUser(null);
@@ -46,13 +66,28 @@ function Header() {
 
         <ul className="nav-links">
           <li>
-            <Link to="/">Events</Link>
+            <a 
+              onClick={() => handleScrollTo('events')} 
+              style={{ cursor: 'pointer' }}
+            >
+              Events
+            </a>
           </li>
           <li>
-            <Link to="/">Leaderboards</Link>
+            <a 
+              onClick={() => handleScrollTo('leaderboards')} 
+              style={{ cursor: 'pointer' }}
+            >
+              Leaderboards
+            </a>
           </li>
           <li>
-            <Link to="/">News</Link>
+            <a 
+              onClick={() => handleScrollTo('news')} 
+              style={{ cursor: 'pointer' }}
+            >
+              News
+            </a>
           </li>
           <li>
             <Link to="/about">About Us</Link>
