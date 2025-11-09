@@ -1,9 +1,11 @@
 // src/pages/PointsTable.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
 const PointsTable = () => {
+  const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
@@ -398,7 +400,16 @@ const PointsTable = () => {
                         <strong>{index + 1}</strong>
                       </td>
                       <td>
-                        <strong>{entry.team?.teamName || "Unknown Team"}</strong>
+                        <strong 
+                          onClick={() => navigate(`/team/${entry.team?._id}`)}
+                          style={{ 
+                            cursor: "pointer", 
+                            color: "#2563eb",
+                            textDecoration: "underline"
+                          }}
+                        >
+                          {entry.team?.teamName || "Unknown Team"}
+                        </strong>
                       </td>
                       <td>{entry.matchesPlayed}</td>
                       <td style={{ color: "#16a34a", fontWeight: "600" }}>{entry.wins}</td>

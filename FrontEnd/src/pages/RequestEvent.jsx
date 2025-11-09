@@ -28,16 +28,102 @@ const RequestEvent = () => {
 
   const navigate = useNavigate();
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setLoading(true);
+  //   setMessage("");
+
+  //   try {
+  //     // Optional: validate thumbnail URL
+  //     if (formData.thumbnail) {
+  //       try {
+  //         new URL(formData.thumbnail); // sirf valid URL check karega
+  //       } catch (err) {
+  //         alert("Please enter a valid URL for the thumbnail.");
+  //         setLoading(false);
+  //         return;
+  //       }
+  //     }
+
+
+  //     // Send data to backend
+  //     const response = await fetch("http://localhost:8000/api/v1/requestEvent", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         name: formData.name,
+  //         date: formData.date,
+  //         location: formData.venue,
+  //         eligibility: formData.eligibility,
+  //         image: formData.thumbnail,
+  //         registrationFee: Number(formData.fee) || 0,
+  //         winningPrize: Number(formData.prize) || 0,
+  //         description: formData.description,
+  //         status: "pending", // default status
+  //         requestedAt: new Date().toISOString(), // timestamp
+  //       }),
+  //     });
+
+  //     const result = await response.json();
+
+  //     if (!response.ok) throw new Error(result.message || "Failed to submit event request");
+
+  //     // Show success message
+  //     setMessage("✅ Your event request has been submitted successfully! Redirecting to Home...");
+
+  //     // Reset form
+  //     setFormData({
+  //       name: "",
+  //       date: "",
+  //       venue: "",
+  //       eligibility: "",
+  //       thumbnail: "",
+  //       prize: "",
+  //       fee: "",
+  //       description: "",
+  //     });
+
+  //     // Redirect to home page after 2 seconds
+  //     setTimeout(() => {
+  //       navigate("/");
+  //     }, 2000);
+
+  //   } catch (error) {
+  //     console.error("Error submitting event request:", error);
+  //     setMessage(`❌ Error: ${error.message}`);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // src/pages/RequestEvent.jsx
+
+  // ... (keep all your existing useState and handleChange code)
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage(""); // Clear previous messages
+
+    // --- 1. Check for Logged-in User ---
+    const userString = localStorage.getItem("currentUser");
+    const user = userString ? JSON.parse(userString) : null;
+
+    // --- 2. Handle if Not Logged In ---
+    if (!user) {
+      setMessage("❌ You must be logged in to submit an event.");
+      alert("Please log in to request a new event.");
+      navigate("/login"); // Redirect to your login page
+      return; // Stop the submission
+    }
+
+    // If user is logged in, proceed with submission
     setLoading(true);
-    setMessage("");
 
     try {
-      // Optional: validate thumbnail URL
+      // (Your existing thumbnail validation logic can stay here)
       if (formData.thumbnail) {
         try {
-          new URL(formData.thumbnail); // sirf valid URL check karega
+          new URL(formData.thumbnail);
         } catch (err) {
           alert("Please enter a valid URL for the thumbnail.");
           setLoading(false);
@@ -45,12 +131,12 @@ const RequestEvent = () => {
         }
       }
 
-
-      // Send data to backend
+      // --- 3. Send User Details with the Request ---
       const response = await fetch("http://localhost:8000/api/v1/requestEvent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // All your existing event data:
           name: formData.name,
           date: formData.date,
           location: formData.venue,
@@ -59,8 +145,12 @@ const RequestEvent = () => {
           registrationFee: Number(formData.fee) || 0,
           winningPrize: Number(formData.prize) || 0,
           description: formData.description,
-          status: "pending", // default status
-          requestedAt: new Date().toISOString(), // timestamp
+          status: "pending",
+          requestedAt: new Date().toISOString(),
+
+          // --- NEW: Add the user's ID ---
+          // Assumes your user object has an _id field from MongoDB
+          requestedBy: user.id, 
         }),
       });
 
@@ -68,10 +158,8 @@ const RequestEvent = () => {
 
       if (!response.ok) throw new Error(result.message || "Failed to submit event request");
 
-      // Show success message
+      // ... (rest of your success logic: setMessage, resetForm, setTimeout)
       setMessage("✅ Your event request has been submitted successfully! Redirecting to Home...");
-
-      // Reset form
       setFormData({
         name: "",
         date: "",
@@ -82,8 +170,6 @@ const RequestEvent = () => {
         fee: "",
         description: "",
       });
-
-      // Redirect to home page after 2 seconds
       setTimeout(() => {
         navigate("/");
       }, 2000);
