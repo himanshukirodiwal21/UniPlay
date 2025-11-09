@@ -1,171 +1,53 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { Eye, Calendar, Loader2 } from 'lucide-react'; // Added Loader2 for loading state
+import { Eye, Calendar } from 'lucide-react';
 
-// --- Helper Component for Admin Buttons ---
-// Receives 'styles' prop to apply the *exact* original styles
-const AdminActions = ({ event, loading, onGenerateSchedule, styles }) => {
-  const navigate = useNavigate();
-  return (
-    <>
-      {/* Generate Schedule Button - Admin Only */}
-      {!event?.scheduleGenerated && (
-        <button
-          style={styles.scheduleButton} // Uses original style
-          onClick={onGenerateSchedule}
-          disabled={loading}
-        >
-          <Calendar size={20} />
-          <span>{loading ? 'Generating...' : '⚡ Generate Match Schedule'}</span>
-        </button>
-      )}
-
-      {event?.scheduleGenerated && (
-        <div style={{
-          ...styles.scheduleButton, // Uses original style
-          cursor: 'default',
-          backgroundColor: '#10b981'
-        }}>
-          <Calendar size={20} />
-          <span>✅ Schedule Generated</span>
-        </div>
-      )}
-
-      {/* Scorer Login */}
-      <button 
-        onClick={() => navigate('/ScorerDashboard', { state: { event } })}
-        className="btn btn-primary" // Uses original class
-      >
-        Scorer Login
-      </button>
-    </>
-  );
-};
-
-// --- Helper Component for Public Buttons ---
-// Receives 'styles' prop to apply the *exact* original styles
-const PublicActions = ({ event, styles }) => {
-  const navigate = useNavigate();
-  return (
-    <>
-      {/* View Live Matches */}
-      <button 
-        className="btn btn-secondary" // Uses original class
-        onClick={() => navigate('/EventMatches', { state: { event } })}
-        style={{ // Uses original inline style
-          backgroundColor: '#b33b3bff',
-          color: '#ffffffff',
-          border: 'none',
-        }}
-      >
-        View Live Matches
-      </button>
-
-      {/* points table */}
-      <button 
-        onClick={() => navigate('/points-table', { state: { event } })}
-        className="btn btn-primary" // Uses original class
-      >
-        Points Table
-      </button>
-
-      {/* View Registered Teams */}
-      <button
-        onClick={() => navigate(`/registered-teams/${event?._id}`)}
-        className="btn btn-secondary btn-view-teams" // Uses original class
-      >
-        <Eye size={20} />
-        <span>View All Registered Teams</span>
-      </button>
-    </>
-  );
-};
-
-
-// --- Main Component ---
 export default function EventLanding() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { eventId } = useParams(); // <-- NEW: Get ID from URL
-
-  // Event data can come from location state OR be fetched
-  const [event, setEvent] = useState(location.state?.event || null);
-  const [loading, setLoading] = useState(false); // For schedule generation
-  const [pageLoading, setPageLoading] = useState(!event); // <-- NEW: For initial page load
+  const event = location.state?.event;
+  
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // --- NEW: Robust Data Fetching ---
-  // If event is not in location state (e.g., page refresh), fetch it.
-  useEffect(() => {
-    // Only fetch if we have no event AND we have an eventId from the URL
-    if (!event && eventId) {
-      const fetchEvent = async () => {
-        setPageLoading(true);
-        try {
-          // --- THIS IS THE API CALL YOU MUST FIX ON YOUR BACKEND ---
-          // It MUST .populate('requestedBy') to get admin data
-          const res = await fetch(`http://localhost:8000/api/events/${eventId}`);
-          if (!res.ok) throw new Error('Event not found');
-          const data = await res.json();
-          setEvent(data); // Set the event data from the API
-        } catch (err)
- {
-          console.error(err);
-          setMessage(`❌ Error: ${err.message}`);
-        } finally {
-          setPageLoading(false);
-        }
-      };
-      fetchEvent();
-    }
-  }, [event, eventId]); // Re-run if eventId changes
-
-  // --- Cleaner Admin Check ---
-  const currentUser = useMemo(() => {
-    const userString = localStorage.getItem("currentUser");
-    return userString ? JSON.parse(userString) : null;
-  }, []);
-
-  const isEventAdmin = useMemo(() => {
-    // This check is now safer
-    // It still relies on event.requestedBy being populated by your backend
-    return currentUser?.id === event?.requestedBy?.id;
-  }, [currentUser, event]);
-  
-  // --- DEBUGGING: Check your console for these values ---
-  console.log("EventLanding - Current User:", currentUser ? JSON.stringify(currentUser, null, 2) : null);
-  console.log("EventLanding - Event Object:", event ? JSON.stringify(event, null, 2) : null);
-  console.log("EventLanding - Is Admin?", isEventAdmin);
-  // --------------------------------------------------------
-
-  // --- Original handleGenerateSchedule function (no changes) ---
+  // Generate Schedule Function
   const handleGenerateSchedule = async () => {
     if (!event || !event._id) {
       alert('Event ID missing!');
       return;
     }
-    // ... (rest of your function is unchanged) ...
+
     if (event.scheduleGenerated) {
       alert('Schedule already generated for this event!');
       return;
     }
+
     try {
       setLoading(true);
       setMessage('Generating schedule...');
+
       const response = await fetch(
         `http://localhost:8000/api/v1/matches/${event._id}/generateSchedule`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+          },
         }
       );
+
       const data = await response.json();
+
       if (response.ok && data.success) {
         setMessage(`✅ ${data.message}`);
         alert(`Schedule Generated!\n\n${data.summary.totalMatches} matches created:\n- Round Robin: ${data.summary.roundRobinMatches}\n- Knockout: ${data.summary.knockoutMatches}\n- Start Date: ${data.summary.startDate}`);
-        setEvent(prev => ({ ...prev, scheduleGenerated: true })); // Update local state
+        
+        // Update event state to reflect schedule generated
+        if (location.state?.event) {
+          location.state.event.scheduleGenerated = true;
+        }
       } else {
         setMessage(`❌ ${data.msg || data.message}`);
         alert(data.msg || data.message);
@@ -179,7 +61,6 @@ export default function EventLanding() {
     }
   };
 
-  // --- Original styles object (no changes) ---
   const styles = {
     container: {
       minHeight: '100vh',
@@ -216,7 +97,7 @@ export default function EventLanding() {
       marginTop: '40px',
       padding: '0 20px',
     },
-    scheduleButton: { // This style is now passed to the helper component
+    scheduleButton: {
       display: 'flex',
       alignItems: 'center',
       gap: '10px',
@@ -240,64 +121,16 @@ export default function EventLanding() {
       fontWeight: '500',
       textAlign: 'center',
     },
-    // --- NEW: Style for loading state ---
-    loadingContainer: {
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingTop: '10rem',
-      color: 'white',
-      gap: '1rem',
-    },
-    iconSpin: {
-      animation: 'spin 1s linear infinite',
-    }
   };
 
-  // --- NEW: Loading State for Initial Fetch ---
-  if (pageLoading) {
-    return (
-      <>
-        {/* Add keyframes for iconSpin */}
-        <style>
-          {`
-            @keyframes spin {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-          `}
-        </style>
-        <Header />
-        <div style={styles.container}>
-          <div style={styles.loadingContainer}>
-            <Loader2 size={40} style={styles.iconSpin} />
-            <p>Loading Event...</p>
-          </div>
-        </div>
-        <Footer />
-      </>
-    );
-  }
-
-  // --- Main Render (Now cleaner) ---
   return (
     <>
-      {/* Add keyframes for iconSpin */}
-      <style>
-        {`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-        `}
-      </style>
       <Header />
       <div style={styles.container}>
         <div style={styles.heroContainer}>
           <div style={styles.hero}>
             <h1 style={styles.title}>
-              🏆 {event?.name || 'Event Landing Page'}
+              🏆 {event?.name || 'College Cricket Tournament 2025'}
             </h1>
             <p style={styles.subtitle}>
               Live scoring • Real-time updates • Complete statistics
@@ -311,18 +144,66 @@ export default function EventLanding() {
           )}
 
           <div style={styles.buttonContainer}>
-            
-            {/* --- CLEANED UP: Logic is moved to components --- */}
-            {isEventAdmin && (
-              <AdminActions 
-                event={event} 
-                loading={loading}
-                onGenerateSchedule={handleGenerateSchedule}
-                styles={styles} // Pass styles object
-              />
+            {/* Generate Schedule Button - Admin Only */}
+            {!event?.scheduleGenerated && (
+              <button
+                style={styles.scheduleButton}
+                onClick={handleGenerateSchedule}
+                disabled={loading}
+              >
+                <Calendar size={20} />
+                <span>{loading ? 'Generating...' : '⚡ Generate Match Schedule'}</span>
+              </button>
             )}
-            
-            <PublicActions event={event} styles={styles} />
+
+            {event?.scheduleGenerated && (
+              <div style={{
+                ...styles.scheduleButton,
+                cursor: 'default',
+                backgroundColor: '#10b981'
+              }}>
+                <Calendar size={20} />
+                <span>✅ Schedule Generated</span>
+              </div>
+            )}
+
+            {/* View Live Matches */}
+            <button 
+              className="btn btn-secondary"
+              onClick={() => navigate('/EventMatches', { state: { event } })}
+              style={{
+                backgroundColor: '#b33b3bff',
+                color: '#ffffffff',
+                border: 'none',
+              }}
+            >
+              View Live Matches
+            </button>
+
+            {/* Scorer Login */}
+            <button 
+              onClick={() => navigate('/ScorerDashboard', { state: { event } })}
+              className="btn btn-primary"
+            >
+              Scorer Login
+            </button>
+
+            {/* points table */}
+            <button 
+              onClick={() => navigate('/points-table', { state: { event } })}
+              className="btn btn-primary"
+            >
+              Points Table
+            </button>
+
+            {/* View Registered Teams */}
+            <button
+              onClick={() => navigate(`/registered-teams/${event?._id}`)}
+              className="btn btn-secondary btn-view-teams"
+            >
+              <Eye size={20} />
+              <span>View All Registered Teams</span>
+            </button>
           </div>
         </div>
       </div>
