@@ -4,8 +4,25 @@ import mongoose, { Schema } from "mongoose";
 const ballSchema = new Schema({
   ballNumber: Number,
   over: String, // e.g., "1.1", "1.2"
+  
+  // ✅ CRITICAL: Player IDs for stats tracking
+  batsmanId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Player',
+    required: true  // Make it required
+  },
+  bowlerId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Player',
+    required: true  // Make it required
+  },
+  
+  // Display names (backup)
   batsman: String,
   bowler: String,
+  batsmanName: String,
+  bowlerName: String,
+  
   runs: {
     type: Number,
     default: 0
@@ -159,6 +176,5 @@ liveMatchSchema.index({ match: 1 });
 liveMatchSchema.index({ status: 1 });
 liveMatchSchema.index({ lastUpdated: -1 });
 
-// ✅ IMPORTANT: Default export for consistency
 const LiveMatch = mongoose.model("LiveMatch", liveMatchSchema);
 export default LiveMatch;

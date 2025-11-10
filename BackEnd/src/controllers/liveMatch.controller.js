@@ -1,6 +1,7 @@
 // src/controllers/liveMatch.controller.js
 import LiveMatch from "../models/liveMatch.model.js";
 import Match from "../models/match.model.js";
+import { Player } from "../models/player.model.js";
 import { io } from "../index.js";
 
 /* -------------------------------------------------------
@@ -223,6 +224,10 @@ export const updateBall = async (req, res) => {
       over: overString,
       batsman: batsman || "Unknown",
       bowler: bowler || "Unknown",
+      batsmanId: req.body.batsmanId,
+      bowlerId: req.body.bowlerId,
+      batsmanName: req.body.batsmanName,
+      bowlerName: req.body.bowlerName,
       runs: runs || 0,
       extras: extras || 0,
       extrasType: extrasType || "none",
@@ -233,8 +238,65 @@ export const updateBall = async (req, res) => {
       timestamp: new Date(),
     };
 
-    
-    // ✅ Update innings with proper over & ball logic
+    console.log("🏏 Saving ball with player IDs:", {
+      batsmanId: ball.batsmanId,
+      bowlerId: ball.bowlerId,
+      runs: ball.runs
+    });
+
+    // ✅ ============= UPDATE PLAYER STATS =============
+    try {
+      // Update batsman stats
+      if (ball.batsmanId) {
+        const batsmanPlayer = await Player.findById(ball.batsmanId);
+        
+        if (batsmanPlayer) {
+          // Update batting stats for this ball
+          batsmanPlayer.battingStats.totalRuns += (runs || 0);
+          batsmanPlayer.battingStats.ballsFaced += 1;
+          
+          // Check for wicket
+          if (isWicket && dismissedPlayer === ball.batsmanId) {
+            batsmanPlayer.battingStats.outs += 1;
+          }
+          
+          await batsmanPlayer.save();
+          console.log(`✅ Batsman stats updated: ${ball.batsmanName} - Runs: ${runs}, Total: ${batsmanPlayer.battingStats.totalRuns}`);
+        } else {
+          console.warn(`⚠️ Batsman not found: ${ball.batsmanId}`);
+        }
+      }
+
+      // Update bowler stats
+      if (ball.bowlerId) {
+        const bowlerPlayer = await Player.findById(ball.bowlerId);
+        
+        if (bowlerPlayer) {
+          // Only count legal deliveries
+          if (extrasType !== "wide" && extrasType !== "noBall") {
+            bowlerPlayer.bowlingStats.ballsBowled += 1;
+          }
+          
+          bowlerPlayer.bowlingStats.runsConceded += (runs || 0) + (extras || 0);
+          
+          // Check for wicket
+          if (isWicket) {
+            bowlerPlayer.bowlingStats.wicketsTaken += 1;
+          }
+          
+          await bowlerPlayer.save();
+          console.log(`✅ Bowler stats updated: ${ball.bowlerName} - Wickets: ${bowlerPlayer.bowlingStats.wicketsTaken}, Runs: ${bowlerPlayer.bowlingStats.runsConceded}`);
+        } else {
+          console.warn(`⚠️ Bowler not found: ${ball.bowlerId}`);
+        }
+      }
+    } catch (playerStatsError) {
+      console.error("❌ Error updating player stats:", playerStatsError);
+      // Don't fail the whole request, continue with match update
+    }
+    // ✅ ============= END PLAYER STATS UPDATE =============
+
+    // Update innings with proper over & ball logic
     currentInnings.ballByBall.push(ball);
     currentInnings.score += (runs || 0) + (extras || 0);
 
@@ -267,7 +329,6 @@ export const updateBall = async (req, res) => {
     await liveMatch.save();
 
     // ✅ ============= UPDATE MATCH MODEL =============
-    // Determine which score field to update (scoreA or scoreB)
     const innings1 = liveMatch.innings[0];
     let scoreA = 0,
       scoreB = 0;
@@ -276,7 +337,6 @@ export const updateBall = async (req, res) => {
     let currentWickets = 0;
 
     if (liveMatch.currentInnings === 1) {
-      // First innings - batting team is innings1.battingTeam
       if (innings1.battingTeam.toString() === liveMatch.teamA.toString()) {
         scoreA = innings1.score;
         currentBatting = "teamA";
@@ -287,7 +347,6 @@ export const updateBall = async (req, res) => {
       currentOvers = innings1.overs.toFixed(1);
       currentWickets = innings1.wickets;
     } else if (liveMatch.currentInnings === 2) {
-      // Second innings
       const innings2 = liveMatch.innings[1];
 
       if (innings1.battingTeam.toString() === liveMatch.teamA.toString()) {
@@ -303,7 +362,6 @@ export const updateBall = async (req, res) => {
       currentWickets = innings2.wickets;
     }
 
-    // Update Match model with current scores
     await Match.findByIdAndUpdate(matchId, {
       scoreA,
       scoreB,
@@ -317,7 +375,6 @@ export const updateBall = async (req, res) => {
       `✅ Match model updated: scoreA=${scoreA}, scoreB=${scoreB}, overs=${currentOvers}, wickets=${currentWickets}`
     );
 
-    // ✅ Fetch updated match with populated data for socket emission
     const updatedMatch = await Match.findById(matchId)
       .populate("teamA teamB", "teamName")
       .lean();
@@ -328,7 +385,7 @@ export const updateBall = async (req, res) => {
     if (io) {
       io.to(matchId).emit("ball-updated", {
         matchId,
-        match: updatedMatch, // ✅ Full match data with scoreA, scoreB
+        match: updatedMatch,
         ball,
         innings: {
           score: currentInnings.score,

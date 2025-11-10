@@ -964,30 +964,57 @@ export default function ScorerDashboard() {
 
   // --- NEW FUNCTION to fetch players ---
   const fetchTeamPlayers = async (battingTeamId, bowlingTeamId) => {
-    if (!battingTeamId || !bowlingTeamId) return;
-    try {
-      console.log(`Fetching players for Batting: ${battingTeamId}, Bowling: ${bowlingTeamId}`);
-      
-      // Fetch batting team
-      const batResponse = await fetch(`${BACKEND_URL}/api/v1/team-registrations/${battingTeamId}`);
-      if (!batResponse.ok) throw new Error('Failed to fetch batting team');
-      const batData = await batResponse.json();
-      // Assuming player data is in `data.data.players` from your controller
-      setBattingTeamPlayers(batData.data.players || []);
+  if (!battingTeamId || !bowlingTeamId) return;
+  try {
+    console.log(`Fetching players for Batting: ${battingTeamId}, Bowling: ${bowlingTeamId}`);
+    
+    // ✅ Fetch batting team
+    const batResponse = await fetch(`${BACKEND_URL}/api/v1/team-registrations/${battingTeamId}`);
+    if (!batResponse.ok) throw new Error('Failed to fetch batting team');
+    const batData = await batResponse.json();
+    
+    // ✅ Map to use playerId if available, else fallback to team player _id
+    const battingPlayers = (batData.data.players || []).map(teamPlayer => ({
+      _id: teamPlayer.playerId || teamPlayer._id, // Use playerId first!
+      name: teamPlayer.name,
+      role: teamPlayer.role,
+      isLinked: !!teamPlayer.playerId
+    }));
+    
+    setBattingTeamPlayers(battingPlayers);
 
-      // Fetch bowling team
-      const bowlResponse = await fetch(`${BACKEND_URL}/api/v1/team-registrations/${bowlingTeamId}`);
-      if (!bowlResponse.ok) throw new Error('Failed to fetch bowling team');
-      const bowlData = await bowlResponse.json();
-      setBowlingTeamPlayers(bowlData.data.players || []);
+    // ✅ Fetch bowling team
+    const bowlResponse = await fetch(`${BACKEND_URL}/api/v1/team-registrations/${bowlingTeamId}`);
+    if (!bowlResponse.ok) throw new Error('Failed to fetch bowling team');
+    const bowlData = await bowlResponse.json();
+    
+    const bowlingPlayers = (bowlData.data.players || []).map(teamPlayer => ({
+      _id: teamPlayer.playerId || teamPlayer._id, // Use playerId first!
+      name: teamPlayer.name,
+      role: teamPlayer.role,
+      isLinked: !!teamPlayer.playerId
+    }));
+    
+    setBowlingTeamPlayers(bowlingPlayers);
 
-      console.log("✅ Players fetched");
-
-    } catch (err) {
-      console.error("❌ Error fetching team players:", err);
-      alert(`Error fetching players: ${err.message}.`);
+    // ✅ Warning if players not linked
+    const unlinkedBatting = battingPlayers.filter(p => !p.isLinked);
+    const unlinkedBowling = bowlingPlayers.filter(p => !p.isLinked);
+    
+    if (unlinkedBatting.length > 0 || unlinkedBowling.length > 0) {
+      console.warn('⚠️ Some players not linked to Player collection. Stats may not update!', {
+        batting: unlinkedBatting.map(p => p.name),
+        bowling: unlinkedBowling.map(p => p.name)
+      });
     }
-  };
+
+    console.log("✅ Players fetched");
+
+  } catch (err) {
+    console.error("❌ Error fetching team players:", err);
+    alert(`Error fetching players: ${err.message}.`);
+  }
+};
   
   const fetchMatches = async () => {
     try {
@@ -1386,14 +1413,11 @@ export default function ScorerDashboard() {
 
   // --- ✅ UPDATED handleEndInnings WITH INNINGS DATA ---
 const handleEndInnings = async () => {
-  const currentInnings =
-    liveMatchData.innings[liveMatchData.currentInnings - 1];
+  const currentInnings = liveMatchData.innings[liveMatchData.currentInnings - 1];
   const totalOvers = liveMatchData.totalOvers || 20;
 
   if (currentInnings.wickets >= 10 || currentInnings.overs >= totalOvers) {
-    console.log(
-      `✅ Innings ${liveMatchData.currentInnings} auto-complete triggered`
-    );
+    console.log(`✅ Innings ${liveMatchData.currentInnings} auto-complete triggered`);
   } else {
     const confirmEnd = window.confirm(
       `Are you sure you want to end this innings early?\n\n` +
@@ -1406,36 +1430,90 @@ const handleEndInnings = async () => {
   try {
     setScoringLoading(true);
 
-    // ✅ NEW: Prepare innings data for match completion
+    // ✅ NEW: Process ballByBall data to extract batsmen & bowlers
     const innings1 = liveMatchData.innings[0];
     const innings2 = liveMatchData.innings[1] || null;
 
+    // ✅ Helper function to aggregate player stats from ballByBall
+    const aggregateInningsStats = (innings) => {
+      const batsmenMap = {};
+      const bowlersMap = {};
+
+      // Process each ball
+      for (const ball of innings.ballByBall || []) {
+        // Aggregate batsman stats
+        if (ball.batsmanId) {
+          if (!batsmenMap[ball.batsmanId]) {
+            batsmenMap[ball.batsmanId] = {
+              playerId: ball.batsmanId,
+              playerName: ball.batsmanName || ball.batsman || "Unknown",
+              runs: 0,
+              balls: 0,
+              fours: 0,
+              sixes: 0,
+              isOut: false
+            };
+          }
+          
+          batsmenMap[ball.batsmanId].runs += ball.runs || 0;
+          
+          // Count legal deliveries (not wides/no-balls)
+          if (ball.extrasType !== "wide" && ball.extrasType !== "noBall") {
+            batsmenMap[ball.batsmanId].balls += 1;
+          }
+          
+          if (ball.runs === 4) batsmenMap[ball.batsmanId].fours += 1;
+          if (ball.runs === 6) batsmenMap[ball.batsmanId].sixes += 1;
+          if (ball.isWicket) batsmenMap[ball.batsmanId].isOut = true;
+        }
+
+        // Aggregate bowler stats
+        if (ball.bowlerId) {
+          if (!bowlersMap[ball.bowlerId]) {
+            bowlersMap[ball.bowlerId] = {
+              playerId: ball.bowlerId,
+              playerName: ball.bowlerName || ball.bowler || "Unknown",
+              wickets: 0,
+              balls: 0,
+              runs: 0,
+              maidens: 0
+            };
+          }
+          
+          bowlersMap[ball.bowlerId].runs += (ball.runs || 0) + (ball.extras || 0);
+          
+          // Count legal deliveries
+          if (ball.extrasType !== "wide" && ball.extrasType !== "noBall") {
+            bowlersMap[ball.bowlerId].balls += 1;
+          }
+          
+          if (ball.isWicket) bowlersMap[ball.bowlerId].wickets += 1;
+        }
+      }
+
+      return {
+        battingTeamId: innings.battingTeam?._id,
+        bowlingTeamId: innings.bowlingTeam?._id,
+        score: innings.score || 0,
+        wickets: innings.wickets || 0,
+        overs: innings.overs || 0,
+        batsmen: Object.values(batsmenMap),
+        bowlers: Object.values(bowlersMap),
+        ballByBall: innings.ballByBall || []
+      };
+    };
+
+    // ✅ Prepare innings data with player stats
     const inningsData = {
-      innings: [
-        {
-          battingTeamId: innings1.battingTeam?._id,
-          bowlingTeamId: innings1.bowlingTeam?._id,
-          score: innings1.score || 0,
-          wickets: innings1.wickets || 0,
-          overs: innings1.overs || 0,
-          ballByBall: innings1.ballByBall || [],
-        },
-      ],
+      innings: [aggregateInningsStats(innings1)]
     };
 
     // Add second innings if exists
     if (innings2) {
-      inningsData.innings.push({
-        battingTeamId: innings2.battingTeam?._id,
-        bowlingTeamId: innings2.bowlingTeam?._id,
-        score: innings2.score || 0,
-        wickets: innings2.wickets || 0,
-        overs: innings2.overs || 0,
-        ballByBall: innings2.ballByBall || [],
-      });
+      inningsData.innings.push(aggregateInningsStats(innings2));
     }
 
-    console.log("📤 Sending innings data:", inningsData);
+    console.log("📤 Sending innings data with player stats:", inningsData);
 
     // ✅ First complete the innings
     const response = await fetch(
@@ -1458,7 +1536,7 @@ const handleEndInnings = async () => {
 
     // ✅ If this was the LAST innings (2nd innings), complete the match WITH innings data
     if (liveMatchData.currentInnings === 2) {
-      console.log("🏆 Completing match with innings data...");
+      console.log("🏆 Completing match with player stats...");
       
       const completeResponse = await fetch(
         `${BACKEND_URL}/api/v1/matches/${currentMatch._id}`,
@@ -1469,7 +1547,7 @@ const handleEndInnings = async () => {
           },
           body: JSON.stringify({
             status: "Completed",
-            ...inningsData, // ✅ Send innings data
+            ...inningsData, // ✅ Send innings data WITH batsmen/bowlers
           }),
         }
       );
@@ -1488,10 +1566,10 @@ const handleEndInnings = async () => {
         handleBackToDashboard();
       }, 2000);
       
-      return; // Exit early for match completion
+      return;
     }
 
-    // ✅ Clear fields AND player lists for next innings
+    // Clear fields for next innings
     setOnStrikeBatsman("");
     setNonStrikeBatsman("");
     setCurrentBowler("");
@@ -1501,9 +1579,8 @@ const handleEndInnings = async () => {
     setLastBalls([]);
 
     alert("✅ First innings ended! Starting second innings...");
-
-    // Refresh latest match state (this will trigger player fetch)
     await fetchLiveMatchData();
+    
   } catch (err) {
     console.error("❌ Error ending innings:", err);
     alert(`Error: ${err.message}`);
