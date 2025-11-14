@@ -1,0 +1,563 @@
+/* PointsTable.css */
+
+/* Color variables from Tailwind's default palette.
+  This makes it easier to manage styles.
+*/
+:root {
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+
+  --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
+  --blue-200: #bfdbfe;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+
+  --green-100: #dcfce7;
+  --green-600: #16a34a;
+  --green-700: #15803d;
+
+  --red-50: #fef2f2;
+  --red-100: #fee2e2;
+  --red-200: #fecaca;
+  --red-600: #dc2626;
+  --red-700: #b91c1c;
+  --red-900: #7f1d1d;
+
+  --yellow-500: #eab308;
+  --amber-700: #a16207;
+  --gray-400: #9ca3af;
+}
+
+/* ---------------- */
+/* Global Page Layout */
+/* ---------------- */
+
+.points-table-page {
+  min-height: 100vh;
+  background-image: linear-gradient(
+    to bottom right,
+    var(--slate-50),
+    var(--blue-50),
+    var(--slate-100)
+  );
+}
+
+.main-content {
+  max-width: 80rem; /* max-w-7xl */
+  margin-left: auto;
+  margin-right: auto;
+  padding: 2rem 1rem; /* py-8 px-4 */
+}
+
+/* ---------------- */
+/* Reusable Card */
+/* ---------------- */
+
+.card {
+  background-color: #ffffff;
+  border-radius: 0.75rem; /* rounded-xl */
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* shadow-sm */
+  border: 1px solid var(--slate-200);
+}
+
+/* ---------------- */
+/* Event Selector */
+/* ---------------- */
+
+.event-selector-card {
+  padding: 1.5rem; /* p-6 */
+  margin-bottom: 1.5rem; /* mb-6 */
+}
+
+.event-selector-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* gap-2 */
+  margin-bottom: 0.75rem; /* mb-3 */
+}
+
+.event-selector-icon {
+  width: 1.25rem; /* w-5 */
+  height: 1.25rem; /* h-5 */
+  color: var(--slate-600);
+}
+
+.event-selector-label {
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 600; /* font-semibold */
+  color: var(--slate-700);
+}
+
+.event-select {
+  width: 100%;
+  padding: 0.625rem 1rem; /* px-4 py-2.5 */
+  font-size: 1rem; /* text-base */
+  background-color: var(--slate-50);
+  border: 1px solid var(--slate-300);
+  border-radius: 0.5rem; /* rounded-lg */
+  transition: all 0.2s;
+}
+
+.event-select:focus {
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 2px var(--blue-500);
+  outline: none;
+}
+
+/* ---------------- */
+/* Loading, Error, Empty States */
+/* ---------------- */
+
+.loading-card,
+.empty-state-card {
+  padding: 3rem; /* p-12 */
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem; /* gap-4 */
+}
+
+.spinner {
+  width: 3rem; /* w-12 */
+  height: 3rem; /* h-12 */
+  border: 4px solid var(--blue-600);
+  border-top-color: transparent;
+  border-radius: 9999px; /* rounded-full */
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  color: var(--slate-600);
+  font-size: 1.125rem; /* text-lg */
+}
+
+.error-card {
+  background-color: var(--red-50);
+  border: 1px solid var(--red-200);
+  border-radius: 0.75rem; /* rounded-xl */
+  padding: 1.5rem; /* p-6 */
+}
+
+.error-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem; /* gap-3 */
+}
+
+.error-icon-wrapper {
+  width: 1.5rem; /* w-6 */
+  height: 1.5rem; /* h-6 */
+  background-color: var(--red-100);
+  border-radius: 9999px; /* rounded-full */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.125rem; /* mt-0.5 */
+}
+
+.error-icon-text {
+  color: var(--red-600);
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 700; /* font-bold */
+}
+
+.error-title {
+  color: var(--red-900);
+  font-weight: 600; /* font-semibold */
+  margin-bottom: 0.25rem; /* mb-1 */
+}
+
+.error-message {
+  color: var(--red-700);
+}
+
+.empty-state-content {
+  text-align: center;
+}
+
+.empty-state-icon {
+  width: 4rem; /* w-16 */
+  height: 4rem; /* h-16 */
+  color: var(--slate-300);
+  margin: 0 auto 1rem; /* mx-auto mb-4 */
+}
+
+.empty-state-title {
+  font-size: 1.25rem; /* text-xl */
+  font-weight: 600; /* font-semibold */
+  color: var(--slate-700);
+  margin-bottom: 0.5rem; /* mb-2 */
+}
+
+.empty-state-subtitle {
+  color: var(--slate-500);
+}
+
+/* ---------------- */
+/* Leaderboard */
+/* ---------------- */
+
+.leaderboard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* space-y-6 */
+}
+
+.leaderboard-header {
+  background-image: linear-gradient(to right, var(--blue-600), var(--blue-700));
+  border-radius: 0.75rem; /* rounded-xl */
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); /* shadow-lg */
+  padding: 1.5rem; /* p-6 */
+  color: #ffffff;
+}
+
+.leaderboard-title {
+  font-size: 1.5rem; /* text-2xl */
+  font-weight: 700; /* font-bold */
+  margin-bottom: 0.5rem; /* mb-2 */
+}
+
+.leaderboard-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem; /* gap-6 */
+  color: #dbeafe; /* text-blue-100 */
+  font-size: 0.875rem; /* text-sm */
+}
+
+.leaderboard-table .table-header {
+  padding: 1rem 1.5rem; /* px-6 py-4 */
+  text-align: left;
+  font-size: 0.75rem; /* text-xs */
+  font-weight: 600; /* font-semibold */
+  color: var(--slate-600); /* This rule will now win */
+  text-transform: uppercase;
+  letter-spacing: 0.05em; /* tracking-wider */
+}
+
+/* ---------------- */
+/* Points Info */
+/* ---------------- */
+
+.points-info-card {
+  background-color: var(--blue-50);
+  border: 1px solid var(--blue-200);
+  border-radius: 0.75rem; /* rounded-xl */
+  padding: 1rem; /* p-4 */
+}
+
+.points-info-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem; /* gap-6 */
+  font-size: 0.875rem; /* text-sm */
+}
+
+.points-info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* gap-2 */
+}
+
+.points-info-badge {
+  width: 2rem; /* w-8 */
+  height: 2rem; /* h-8 */
+  border-radius: 9999px; /* rounded-full */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700; /* font-bold */
+}
+
+.points-info-badge.win {
+  background-color: var(--green-100);
+  color: var(--green-700);
+}
+.points-info-badge.draw {
+  background-color: var(--blue-100);
+  color: var(--blue-700);
+}
+.points-info-badge.loss {
+  background-color: var(--red-100);
+  color: var(--red-700);
+}
+
+.points-info-text {
+  color: var(--slate-700);
+}
+
+/* ---------------- */
+/* Table */
+/* ---------------- */
+
+.table-container {
+  background-color: #ffffff;
+  border-radius: 0.75rem; /* rounded-xl */
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); /* shadow-lg */
+  border: 1px solid var(--slate-200);
+  overflow: hidden;
+}
+
+.table-scroll-wrapper {
+  overflow-x: auto;
+}
+
+.leaderboard-table {
+  width: 100%;
+}
+
+.table-header-row {
+  background-color: var(--slate-50);
+  border-bottom: 1px solid var(--slate-200);
+}
+
+.table-header {
+  padding: 1rem 1.5rem; /* px-6 py-4 */
+  text-align: left;
+  font-size: 0.75rem; /* text-xs */
+  font-weight: 600; /* font-semibold */
+  color: var(--slate-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em; /* tracking-wider */
+}
+
+.table-body {
+  /* This is not a real CSS property, it's simulated by border-bottom on rows */
+  /* divide-y divide-slate-100 */
+}
+
+.table-body-row {
+  border-bottom: 1px solid var(--slate-100);
+  transition: background-color 0.2s;
+}
+.table-body-row:last-child {
+  border-bottom: none;
+}
+
+.table-body-row:hover {
+  background-color: var(--slate-50);
+}
+
+.table-cell {
+  padding: 1rem 1.5rem; /* px-6 py-4 */
+  color: var(--slate-700);
+  white-space: nowrap;
+}
+
+.cell-center {
+  text-align: center;
+}
+
+.cell-rank {
+  width: 1%; /* Keeps it snug */
+}
+
+.cell-team {
+  width: 100%; /* Takes up remaining space */
+}
+
+/* ---------------- */
+/* Table Cell Content */
+/* ---------------- */
+
+.rank-cell-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* gap-2 */
+}
+
+.rank-text {
+  font-weight: 700; /* font-bold */
+  color: var(--slate-700);
+}
+
+/* Icons (from Lucide) */
+.rank-icon-gold {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--yellow-500);
+}
+.rank-icon-silver {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--gray-400);
+}
+.rank-icon-bronze {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--amber-700);
+}
+.nrr-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Team Name */
+.team-name-link {
+  font-weight: 600; /* font-semibold */
+  color: var(--blue-600);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.team-name-link:hover {
+  color: var(--blue-700);
+}
+
+/* W, L, D Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem; /* w-8 */
+  height: 2rem; /* h-8 */
+  border-radius: 9999px; /* rounded-full */
+  font-weight: 600; /* font-semibold */
+  font-size: 0.875rem; /* text-sm */
+}
+.status-badge.win {
+  background-color: var(--green-100);
+  color: var(--green-700);
+}
+.status-badge.loss {
+  background-color: var(--red-100);
+  color: var(--red-700);
+}
+.status-badge.draw {
+  background-color: var(--blue-100);
+  color: var(--blue-700);
+}
+
+/* NRR Cell */
+.nrr-cell-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem; /* gap-1.5 */
+}
+
+.nrr-icon-wrapper.nrr-positive {
+  color: var(--green-600);
+}
+.nrr-icon-wrapper.nrr-negative {
+  color: var(--red-600);
+}
+.nrr-icon-wrapper.nrr-neutral {
+  color: var(--slate-500);
+}
+
+.nrr-text {
+  font-weight: 600; /* font-semibold */
+}
+.nrr-text.nrr-positive {
+  color: var(--green-700);
+}
+.nrr-text.nrr-negative {
+  color: var(--red-700);
+}
+.nrr-text.nrr-neutral {
+  color: var(--slate-600);
+}
+
+/* Points Badge */
+.points-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  padding: 0.375rem 0.75rem; /* px-3 py-1.5 */
+  background-color: var(--blue-600);
+  color: #ffffff;
+  border-radius: 0.5rem; /* rounded-lg */
+  font-weight: 700; /* font-bold */
+  font-size: 1rem; /* text-base */
+}
+
+/* ---------------- */
+/* Table Footer */
+/* ---------------- */
+
+.table-footer-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.875rem; /* text-sm */
+  color: var(--slate-500);
+  padding: 0 0.5rem; /* px-2 */
+}
+
+.table-footer-legend {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* gap-4 */
+  flex-wrap: wrap;
+}
+
+.table-footer-live {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* gap-2 */
+}
+
+.live-indicator {
+  width: 0.5rem; /* w-2 */
+  height: 0.5rem; /* h-2 */
+  background-color: var(--green-600); /* bg-green-500 */
+  border-radius: 9999px; /* rounded-full */
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ---------------- */
+/* Responsive Media Queries */
+/* ---------------- */
+
+/* sm:px-6 */
+@media (min-width: 640px) {
+  .main-content {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+/* md:w-auto */
+@media (min-width: 768px) {
+  .event-select {
+    width: auto;
+  }
+}
+
+/* lg:px-8 */
+@media (min-width: 1024px) {
+  .main-content {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}

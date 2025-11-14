@@ -21,6 +21,8 @@ import PointsTable from "./pages/PointsTable";
 import PlayerProfile from './pages/PlayerProfile';
 import TeamDetails from "./pages/TeamDetails";
 import NewsPage from './pages/NewsPage';
+import EventsPage from './pages/EventsPage';
+import AllMatches from "./pages/AllMatches";
 
 
 
@@ -56,6 +58,9 @@ function App() {
       <Route path="/players/:id" element={<PlayerProfile />} />
       <Route path="/team/:teamId" element={<TeamDetails />} />
       <Route path="/news" element={<NewsPage />} />
+      <Route path="/events" element={<EventsPage />} />
+      <Route path="/all-matches" element={<AllMatches />} />
+      
 
 
       

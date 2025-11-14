@@ -1,3 +1,6 @@
+body {
+  padding-top: 70px !important; /* Adjust this value */
+}
 /* ===========================================
    GLOBAL STYLES & VARIABLES
 =========================================== */
@@ -87,18 +90,24 @@ a {
    HEADER & NAVIGATION
 =========================================== */
 header {
-    background-color: var(--white-color);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    position: sticky;
-    top: 0;
-    z-index: 100;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: var(--white-color);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  z-index: 1000;
 }
 
 header .container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+}
+
+main {
+  padding-top: 1rem;
 }
 
 .logo {
@@ -144,6 +153,173 @@ header .container {
 
 .auth-buttons .btn {
     padding: 0.5rem 1rem;
+}
+
+/* ==============================================
+--- NEW STYLES for Mobile Navigation ---
+==============================================
+*/
+
+/* --- Mobile Nav Toggle (Hamburger) --- */
+.mobile-nav-toggle {
+  display: none; /* Hidden by default */
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--primary-color);
+  z-index: 1001; /* Above sidebar */
+}
+
+/* --- Mobile Nav Sidebar --- */
+.mobile-nav-sidebar {
+  position: fixed;
+  top: 0;
+  right: -300px; /* Start off-screen */
+  width: 300px;
+  height: 100%;
+  background-color: var(--white-color);
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  transition: right 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+}
+
+.mobile-nav-sidebar.open {
+  right: 0; /* Slide in */
+}
+
+.mobile-nav-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--light-color);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.mobile-nav-header .logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.mobile-nav-header .close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dark-color);
+}
+
+.mobile-nav-links {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.mobile-nav-links a {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--dark-color);
+  cursor: pointer;
+}
+
+.mobile-nav-links a:hover {
+  color: var(--primary-color);
+}
+
+.mobile-auth-buttons {
+  margin-top: auto; /* Pushes auth to the bottom */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mobile-auth-buttons .btn {
+  width: 100%;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.mobile-user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: var(--light-color);
+  border-radius: 8px;
+}
+
+.mobile-user-info .user-icon {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: var(--white-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.mobile-user-info div:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-user-info strong {
+  font-size: 1.1rem;
+  color: var(--dark-color);
+}
+.mobile-user-info small {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.btn-logout {
+  background-color: #e74c3c;
+  color: var(--white-color);
+}
+.btn-logout:hover {
+  background-color: #c0392b;
+}
+
+/* --- Mobile Nav Overlay --- */
+.mobile-nav-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 999;
+  display: none;
+}
+
+.mobile-nav-sidebar.open + .mobile-nav-overlay {
+  display: block; /* Show overlay only when menu is open */
+}
+
+/* --- Responsive Media Query --- */
+@media (max-width: 768px) {
+  .nav-links {
+    display: none; /* Hide desktop links */
+  }
+
+  .auth-buttons {
+    display: none; /* Hide desktop auth */
+  }
+
+  .mobile-nav-toggle {
+    display: block; /* Show hamburger icon */
+  }
 }
 
 /* ===========================================
@@ -1114,4 +1290,66 @@ form {
   .password-reset-header h2 {
     font-size: 1.4rem;
   }
+}
+
+/* ==============================================
+--- NEW STYLES for AllMatches.jsx ---
+==============================================
+*/
+
+.all-matches-page {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+.all-matches-header {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.all-matches-header h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--dark-color);
+  line-height: 1.2;
+}
+
+.all-matches-header p {
+  font-size: 1.1rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+}
+
+/* Add space between the sections on the page */
+.all-matches-section {
+  padding-bottom: 3rem;
+  margin-bottom: 3rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.all-matches-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+/* Make the upcoming list full-width */
+.section-upcoming-full .matches-list-full {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Make the empty states on this page less large */
+.empty-placeholder.compact {
+  padding: 2rem;
+  min-height: auto;
+  font-size: 1.1rem;
+  background-color: #f9fafb;
+}
+
+/* Make live/results grids responsive */
+.all-matches-section .live-matches-grid,
+.all-matches-section .results-grid {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
