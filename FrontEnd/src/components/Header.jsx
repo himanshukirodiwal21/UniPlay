@@ -120,9 +120,7 @@ function Header() {
             </a>
           </li>
           <li>
-            <a onClick={() => handleScrollTo("news")} style={{ cursor: "pointer" }}>
-              News
-            </a>
+            <Link to="/news">News</Link>
           </li>
           <li>
             <Link to="/about">About Us</Link>

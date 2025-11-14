@@ -98,20 +98,21 @@
 .hero-actions {
   display: flex;
   gap: 20px;
+  flex-wrap: wrap;
 }
 
 .btn-hero-primary,
 .btn-hero-outline {
-  padding: 18px 40px;
-  font-size: 1.1rem;
-  font-weight: 700;
+  padding: 14px 28px;
+  font-size: 0.95rem;
+  font-weight: 600;
   border-radius: 50px;
   cursor: pointer;
   transition: all 0.3s ease;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .btn-hero-primary {

@@ -406,6 +406,10 @@ const HomePage = () => {
                   <i className="fas fa-bolt"></i>
                   See Live Action
                 </a>
+                <Link to="/request-event" className="btn-hero-outline">
+                  <i className="fas fa-calendar-plus"></i>
+                  Request Event
+                </Link>
                 {!localStorage.getItem("currentUser") && (
                   <Link to="/login" className="btn-hero-outline">
                     Get Started Free
@@ -765,7 +769,7 @@ const HomePage = () => {
           <section id="news" className="section-results">
             <div className="container">
               <div className="section-heading">
-                <h2>📊 Recent Results (News)</h2>
+                <h2>📊 Completed Matches</h2>
                 {/* --- UPDATED LINK 4 --- */}
                 <Link to="/all-matches#completed" className="view-all-link">
                   View All <i className="fas fa-arrow-right"></i>

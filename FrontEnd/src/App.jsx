@@ -23,6 +23,7 @@ import TeamDetails from "./pages/TeamDetails";
 import NewsPage from './pages/NewsPage';
 import EventsPage from './pages/EventsPage';
 import AllMatches from "./pages/AllMatches";
+import OldHomePage from "./pages/OldHomePage";
 
 
 
@@ -60,6 +61,8 @@ function App() {
       <Route path="/news" element={<NewsPage />} />
       <Route path="/events" element={<EventsPage />} />
       <Route path="/all-matches" element={<AllMatches />} />
+
+      <Route path="/old" element={<OldHomePage/>}/>
       
 
 
