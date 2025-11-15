@@ -12,6 +12,10 @@ import {
   ArrowLeft,
   CheckCircle,
   Trophy,
+  Upload,
+  Pause,
+  Square,
+  Gauge,
 } from "lucide-react";
 import { io } from "socket.io-client";
 import Footer from "../components/Footer";
@@ -320,7 +324,6 @@ const styles = {
     color: "#6b7280",
     marginBottom: "4px",
   },
-  // This style is now used for <select>
   playerInput: {
     width: "100%",
     padding: "8px",
@@ -329,7 +332,7 @@ const styles = {
     border: "2px solid #e5e7eb",
     borderRadius: "6px",
     marginTop: "4px",
-    background: "white", // Ensure select bg is white
+    background: "white",
   },
   ballButtonsGrid: {
     display: "grid",
@@ -442,7 +445,245 @@ const styles = {
   },
 };
 
-// ✅ ScoringInterface component is defined OUTSIDE
+// ✅ AutoPlay Control Panel Component
+const AutoPlayControlPanel = ({
+  uploadedFile,
+  setUploadedFile,
+  autoPlayStatus,
+  handleFileUpload,
+  handleStartAutoPlay,
+  handlePauseAutoPlay,
+  handleStopAutoPlay,
+  handleSpeedChange,
+}) => (
+  <div
+    style={{
+      background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+      borderRadius: "16px",
+      padding: "24px",
+      marginBottom: "24px",
+      color: "white",
+    }}
+  >
+    <h3
+      style={{
+        fontSize: "20px",
+        fontWeight: "bold",
+        marginBottom: "16px",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+      }}
+    >
+      <Play size={24} />
+      Auto-Play Control Panel
+    </h3>
+
+    {/* File Upload */}
+    <div
+      style={{
+        background: "rgba(255,255,255,0.1)",
+        borderRadius: "12px",
+        padding: "16px",
+        marginBottom: "16px",
+      }}
+    >
+      <label
+        style={{
+          display: "block",
+          fontSize: "14px",
+          marginBottom: "8px",
+          fontWeight: "600",
+        }}
+      >
+        📤 Upload Cricsheet JSON File
+      </label>
+      <input
+        type="file"
+        accept=".json"
+        onChange={handleFileUpload}
+        style={{
+          width: "100%",
+          padding: "8px",
+          borderRadius: "8px",
+          border: "2px dashed rgba(255,255,255,0.5)",
+          background: "rgba(255,255,255,0.1)",
+          color: "white",
+          cursor: "pointer",
+        }}
+      />
+      {uploadedFile && (
+        <div
+          style={{
+            marginTop: "8px",
+            fontSize: "12px",
+            color: "#d1fae5",
+          }}
+        >
+          ✅ Uploaded: {uploadedFile}
+        </div>
+      )}
+    </div>
+
+    {/* Playback Controls */}
+    {uploadedFile && (
+      <>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "12px",
+            marginBottom: "16px",
+          }}
+        >
+          <button
+            onClick={
+              autoPlayStatus.isPlaying
+                ? handlePauseAutoPlay
+                : handleStartAutoPlay
+            }
+            disabled={!uploadedFile}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              padding: "12px",
+              background: autoPlayStatus.isPlaying ? "#f59e0b" : "#10b981",
+              border: "none",
+              borderRadius: "8px",
+              color: "white",
+              fontWeight: "bold",
+              cursor: uploadedFile ? "pointer" : "not-allowed",
+              opacity: uploadedFile ? 1 : 0.5,
+            }}
+          >
+            {autoPlayStatus.isPlaying ? (
+              <>
+                <Pause size={20} />
+                Pause
+              </>
+            ) : (
+              <>
+                <Play size={20} />
+                {autoPlayStatus.isPaused ? "Resume" : "Start"}
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={handleStopAutoPlay}
+            disabled={!autoPlayStatus.isPlaying && !autoPlayStatus.isPaused}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              padding: "12px",
+              background: "#ef4444",
+              border: "none",
+              borderRadius: "8px",
+              color: "white",
+              fontWeight: "bold",
+              cursor:
+                autoPlayStatus.isPlaying || autoPlayStatus.isPaused
+                  ? "pointer"
+                  : "not-allowed",
+              opacity:
+                autoPlayStatus.isPlaying || autoPlayStatus.isPaused ? 1 : 0.5,
+            }}
+          >
+            <Square size={20} />
+            Stop
+          </button>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "rgba(255,255,255,0.1)",
+              borderRadius: "8px",
+              padding: "8px 12px",
+            }}
+          >
+            <Gauge size={20} />
+            <select
+              value={autoPlayStatus.speed}
+              onChange={(e) => handleSpeedChange(parseFloat(e.target.value))}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "white",
+                fontWeight: "bold",
+                cursor: "pointer",
+                outline: "none",
+                flex: 1,
+              }}
+            >
+              <option value={0.5} style={{ color: "black" }}>
+                0.5x
+              </option>
+              <option value={1} style={{ color: "black" }}>
+                1x
+              </option>
+              <option value={2} style={{ color: "black" }}>
+                2x
+              </option>
+              <option value={3} style={{ color: "black" }}>
+                3x
+              </option>
+            </select>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div
+          style={{
+            background: "rgba(255,255,255,0.1)",
+            borderRadius: "12px",
+            padding: "16px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: "8px",
+              fontSize: "14px",
+            }}
+          >
+            <span>
+              Progress: {autoPlayStatus.currentBall} /{" "}
+              {autoPlayStatus.totalBalls}
+            </span>
+            <span>{autoPlayStatus.progress.toFixed(1)}%</span>
+          </div>
+          <div
+            style={{
+              width: "100%",
+              height: "8px",
+              background: "rgba(255,255,255,0.2)",
+              borderRadius: "4px",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                width: `${autoPlayStatus.progress}%`,
+                height: "100%",
+                background: "linear-gradient(90deg, #10b981, #34d399)",
+                transition: "width 0.3s",
+              }}
+            />
+          </div>
+        </div>
+      </>
+    )}
+  </div>
+);
+
+// ✅ ScoringInterface component
 const ScoringInterface = ({
   liveMatchData,
   onStrikeBatsman,
@@ -457,6 +698,15 @@ const ScoringInterface = ({
   handleBallClick,
   handleEndInnings,
   scoringLoading,
+  autoPlayMode,
+  uploadedFile,
+  setUploadedFile,
+  autoPlayStatus,
+  handleFileUpload,
+  handleStartAutoPlay,
+  handlePauseAutoPlay,
+  handleStopAutoPlay,
+  handleSpeedChange,
 }) => {
   if (!liveMatchData) {
     return (
@@ -475,29 +725,41 @@ const ScoringInterface = ({
   const isInningsComplete =
     currentInnings.wickets >= 10 || currentInnings.overs >= totalOvers;
 
-  // Helper function to create filtered player list for dropdowns
   const getBatsmanOptions = (isStrike) => {
     const otherBatsmanId = isStrike ? nonStrikeBatsman : onStrikeBatsman;
     return battingTeamPlayers
-      .filter(p => p._id !== otherBatsmanId) // Can't be on strike and non-strike
-      .map(player => (
+      .filter((p) => p._id !== otherBatsmanId)
+      .map((player) => (
         <option key={player._id} value={player._id}>
           {player.name}
         </option>
       ));
   };
-  
+
   const getBowlerOptions = () => {
-    return bowlingTeamPlayers.map(player => (
+    return bowlingTeamPlayers.map((player) => (
       <option key={player._id} value={player._id}>
         {player.name}
       </option>
     ));
   };
 
-
   return (
     <div style={styles.mainContent}>
+      {/* ✅ Auto-Play Control Panel (only in auto-play mode) */}
+      {autoPlayMode && (
+        <AutoPlayControlPanel
+          uploadedFile={uploadedFile}
+          setUploadedFile={setUploadedFile}
+          autoPlayStatus={autoPlayStatus}
+          handleFileUpload={handleFileUpload}
+          handleStartAutoPlay={handleStartAutoPlay}
+          handlePauseAutoPlay={handlePauseAutoPlay}
+          handleStopAutoPlay={handleStopAutoPlay}
+          handleSpeedChange={handleSpeedChange}
+        />
+      )}
+
       <div style={styles.actionsCard}>
         <div style={{ textAlign: "center", marginBottom: "24px" }}>
           <h2
@@ -512,9 +774,24 @@ const ScoringInterface = ({
             {liveMatchData.teamB?.teamName || "Team B"}
           </h2>
           {getStatusBadge("InProgress")}
+          {autoPlayMode && (
+            <div
+              style={{
+                marginTop: "8px",
+                padding: "6px 12px",
+                background: "#6366f1",
+                color: "white",
+                borderRadius: "8px",
+                display: "inline-block",
+                fontSize: "14px",
+                fontWeight: "600",
+              }}
+            >
+              🤖 Auto-Play Mode
+            </div>
+          )}
         </div>
 
-        {/* ✅ WARNING: Innings Complete */}
         {isInningsComplete && (
           <div style={styles.warningBox}>
             <CheckCircle size={24} color="#f59e0b" />
@@ -551,7 +828,6 @@ const ScoringInterface = ({
             {currentInnings.overs} overs • Run Rate:{" "}
             {(currentInnings.score / (currentInnings.overs || 1)).toFixed(2)}
           </div>
-          {/* ✅ Wickets indicator */}
           <div
             style={{
               marginTop: "12px",
@@ -569,134 +845,175 @@ const ScoringInterface = ({
           </div>
         </div>
 
-        {/* Player Input Fields with <select> */}
-        <div style={{ marginBottom: "24px" }}>
+        {/* ✅ Only show manual controls if NOT in auto-play mode OR auto-play is not playing */}
+        {(!autoPlayMode || !autoPlayStatus.isPlaying) && (
+          <>
+            <div style={{ marginBottom: "24px" }}>
+              <div style={styles.playerBox}>
+                <div style={styles.playerLabel}>🏏 On-Strike Batsman</div>
+                <select
+                  style={styles.playerInput}
+                  value={onStrikeBatsman}
+                  onChange={(e) => setOnStrikeBatsman(e.target.value)}
+                  disabled={
+                    isInningsComplete || battingTeamPlayers.length === 0
+                  }
+                >
+                  <option value="">-- Select On-Strike --</option>
+                  {getBatsmanOptions(true)}
+                </select>
+                {battingTeamPlayers.length === 0 && (
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "#6b7280",
+                      marginTop: "4px",
+                    }}
+                  >
+                    Loading players...
+                  </div>
+                )}
+              </div>
 
-          <div style={styles.playerBox}>
-            <div style={styles.playerLabel}>🏏 On-Strike Batsman</div>
-            <select
-              style={styles.playerInput}
-              value={onStrikeBatsman}
-              onChange={(e) => setOnStrikeBatsman(e.target.value)}
-              disabled={isInningsComplete || battingTeamPlayers.length === 0}
-            >
-              <option value="">-- Select On-Strike --</option>
-              {getBatsmanOptions(true)}
-            </select>
-            {battingTeamPlayers.length === 0 && (
-              <div style={{fontSize: '12px', color: '#6b7280', marginTop: '4px'}}>Loading players...</div>
-            )}
-          </div>
+              <div style={styles.playerBox}>
+                <div style={styles.playerLabel}>🏃 Non-Strike Batsman</div>
+                <select
+                  style={styles.playerInput}
+                  value={nonStrikeBatsman}
+                  onChange={(e) => setNonStrikeBatsman(e.target.value)}
+                  disabled={
+                    isInningsComplete || battingTeamPlayers.length === 0
+                  }
+                >
+                  <option value="">-- Select Non-Strike --</option>
+                  {getBatsmanOptions(false)}
+                </select>
+              </div>
 
-          <div style={styles.playerBox}>
-            <div style={styles.playerLabel}>🏃 Non-Strike Batsman</div>
-            <select
-              style={styles.playerInput}
-              value={nonStrikeBatsman}
-              onChange={(e) => setNonStrikeBatsman(e.target.value)}
-              disabled={isInningsComplete || battingTeamPlayers.length === 0}
-            >
-              <option value="">-- Select Non-Strike --</option>
-              {getBatsmanOptions(false)}
-            </select>
-          </div>
+              <div style={styles.playerBox}>
+                <div style={styles.playerLabel}>⚾ Current Bowler</div>
+                <select
+                  style={styles.playerInput}
+                  value={currentBowler}
+                  onChange={(e) => setCurrentBowler(e.target.value)}
+                  disabled={
+                    isInningsComplete || bowlingTeamPlayers.length === 0
+                  }
+                >
+                  <option value="">-- Select Bowler --</option>
+                  {getBowlerOptions()}
+                </select>
+                {bowlingTeamPlayers.length === 0 &&
+                  battingTeamPlayers.length > 0 && (
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        color: "#6b7280",
+                        marginTop: "4px",
+                      }}
+                    >
+                      Loading bowlers...
+                    </div>
+                  )}
+              </div>
+            </div>
 
-          <div style={styles.playerBox}>
-            <div style={styles.playerLabel}>⚾ Current Bowler</div>
-            <select
-              style={styles.playerInput}
-              value={currentBowler}
-              onChange={(e) => setCurrentBowler(e.target.value)}
-              disabled={isInningsComplete || bowlingTeamPlayers.length === 0}
-            >
-              <option value="">-- Select Bowler --</option>
-              {getBowlerOptions()}
-            </select>
-            {bowlingTeamPlayers.length === 0 && battingTeamPlayers.length > 0 && (
-              <div style={{fontSize: '12px', color: '#6b7280', marginTop: '4px'}}>Loading bowlers...</div>
-            )}
-          </div>
+            <div style={styles.lastBallsContainer}>
+              <div style={styles.lastBallsTitle}>Last 6 Balls:</div>
+              <div style={styles.lastBallsList}>
+                {lastBalls.length === 0 ? (
+                  <div style={{ color: "#6b7280" }}>No balls yet</div>
+                ) : (
+                  lastBalls.map((ball, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        ...styles.lastBall,
+                        background:
+                          ball === "W"
+                            ? "#ef4444"
+                            : ball === "6"
+                            ? "#7c3aed"
+                            : ball === "4"
+                            ? "#3b82f6"
+                            : "#e5e7eb",
+                        color: ["W", "6", "4"].includes(ball)
+                          ? "white"
+                          : "#1f2937",
+                      }}
+                    >
+                      {ball}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
 
-        </div>
-
-        <div style={styles.lastBallsContainer}>
-          <div style={styles.lastBallsTitle}>Last 6 Balls:</div>
-          <div style={styles.lastBallsList}>
-            {lastBalls.length === 0 ? (
-              <div style={{ color: "#6b7280" }}>No balls yet</div>
-            ) : (
-              lastBalls.map((ball, index) => (
-                <div
-                  key={index}
+            <div style={styles.ballButtonsGrid}>
+              {["0", "1", "2", "3", "4", "6", "W", "WD"].map((value) => (
+                <button
+                  key={value}
                   style={{
-                    ...styles.lastBall,
-                    background:
-                      ball === "W"
-                        ? "#ef4444"
-                        : ball === "6"
-                        ? "#7c3aed"
-                        : ball === "4"
-                        ? "#3b82f6"
-                        : "#e5e7eb",
-                    color: ["W", "6", "4"].includes(ball)
-                      ? "white"
-                      : "#1f2937",
+                    ...styles.ballButton,
+                    borderColor: value === "W" ? "#ef4444" : "#7c3aed",
+                    color: value === "W" ? "#ef4444" : "#7c3aed",
+                    opacity: scoringLoading || isInningsComplete ? 0.5 : 1,
+                    cursor:
+                      scoringLoading || isInningsComplete
+                        ? "not-allowed"
+                        : "pointer",
+                  }}
+                  onClick={() => handleBallClick(value)}
+                  disabled={scoringLoading || isInningsComplete}
+                  onMouseEnter={(e) => {
+                    if (!scoringLoading && !isInningsComplete) {
+                      e.target.style.background =
+                        value === "W" ? "#ef4444" : "#7c3aed";
+                      e.target.style.color = "white";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = "white";
+                    e.target.style.color = value === "W" ? "#ef4444" : "#7c3aed";
                   }}
                 >
-                  {ball}
-                </div>
-              ))
+                  {value}
+                </button>
+              ))}
+            </div>
+
+            {scoringLoading && (
+              <div
+                style={{
+                  textAlign: "center",
+                  color: "#6b7280",
+                  marginTop: "16px",
+                }}
+              >
+                ⏳ Updating score...
+              </div>
             )}
-          </div>
-        </div>
+          </>
+        )}
 
-        {/* ✅ Ball Buttons - Disabled if innings complete */}
-        <div style={styles.ballButtonsGrid}>
-          {["0", "1", "2", "3", "4", "6", "W", "WD"].map((value) => (
-            <button
-              key={value}
-              style={{
-                ...styles.ballButton,
-                borderColor: value === "W" ? "#ef4444" : "#7c3aed",
-                color: value === "W" ? "#ef4444" : "#7c3aed",
-                opacity: scoringLoading || isInningsComplete ? 0.5 : 1,
-                cursor:
-                  scoringLoading || isInningsComplete
-                    ? "not-allowed"
-                    : "pointer",
-              }}
-              onClick={() => handleBallClick(value)}
-              disabled={scoringLoading || isInningsComplete}
-              onMouseEnter={(e) => {
-                if (!scoringLoading && !isInningsComplete) {
-                  e.target.style.background =
-                    value === "W" ? "#ef4444" : "#7c3aed";
-                  e.target.style.color = "white";
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = "white";
-                e.target.style.color = value === "W" ? "#ef4444" : "#7c3aed";
-              }}
-            >
-              {value}
-            </button>
-          ))}
-        </div>
-
-        {scoringLoading && (
+        {/* ✅ Show auto-play info when playing */}
+        {autoPlayMode && autoPlayStatus.isPlaying && (
           <div
             style={{
+              background: "#e0e7ff",
+              borderRadius: "12px",
+              padding: "16px",
               textAlign: "center",
-              color: "#6b7280",
-              marginTop: "16px",
+              color: "#4f46e5",
+              fontWeight: "600",
+              marginBottom: "20px",
             }}
           >
-            ⏳ Updating score...
+            🤖 Auto-play is running... Balls are being played automatically at{" "}
+            {autoPlayStatus.speed}x speed
           </div>
         )}
 
-        {/* ✅ END INNINGS BUTTON */}
         <button
           style={styles.endInningsBtn}
           onClick={handleEndInnings}
@@ -716,7 +1033,7 @@ const ScoringInterface = ({
   );
 };
 
-// ✅ Dashboard component is defined OUTSIDE
+// ✅ Dashboard component
 const Dashboard = ({
   scorerName,
   activeTab,
@@ -892,15 +1209,26 @@ export default function ScorerDashboard() {
   const [liveMatchData, setLiveMatchData] = useState(null);
   const [scoringLoading, setScoringLoading] = useState(false);
 
-  // --- NEW Scoring state ---
+  // Scoring state
   const [onStrikeBatsman, setOnStrikeBatsman] = useState("");
   const [nonStrikeBatsman, setNonStrikeBatsman] = useState("");
   const [currentBowler, setCurrentBowler] = useState("");
   const [battingTeamPlayers, setBattingTeamPlayers] = useState([]);
   const [bowlingTeamPlayers, setBowlingTeamPlayers] = useState([]);
-  const [lastOver, setLastOver] = useState(0); // To track over changes
+  const [lastOver, setLastOver] = useState(0);
   const [lastBalls, setLastBalls] = useState([]);
-  // --- END NEW Scoring state ---
+
+  // ✅ NEW: Auto-Play state
+  const [autoPlayMode, setAutoPlayMode] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [autoPlayStatus, setAutoPlayStatus] = useState({
+    isPlaying: false,
+    isPaused: false,
+    currentBall: 0,
+    totalBalls: 0,
+    speed: 1,
+    progress: 0,
+  });
 
   // Fetch matches when tab changes
   useEffect(() => {
@@ -928,7 +1256,6 @@ export default function ScorerDashboard() {
         console.log("✅ Innings complete:", data);
         alert("Innings completed! Starting next innings...");
         fetchLiveMatchData();
-        // Clear fields
         setOnStrikeBatsman("");
         setNonStrikeBatsman("");
         setCurrentBowler("");
@@ -962,60 +1289,211 @@ export default function ScorerDashboard() {
     }
   }, [currentMatch, currentView]);
 
-  // --- NEW FUNCTION to fetch players ---
-  const fetchTeamPlayers = async (battingTeamId, bowlingTeamId) => {
-  if (!battingTeamId || !bowlingTeamId) return;
-  try {
-    console.log(`Fetching players for Batting: ${battingTeamId}, Bowling: ${bowlingTeamId}`);
-    
-    // ✅ Fetch batting team
-    const batResponse = await fetch(`${BACKEND_URL}/api/v1/team-registrations/${battingTeamId}`);
-    if (!batResponse.ok) throw new Error('Failed to fetch batting team');
-    const batData = await batResponse.json();
-    
-    // ✅ Map to use playerId if available, else fallback to team player _id
-    const battingPlayers = (batData.data.players || []).map(teamPlayer => ({
-      _id: teamPlayer.playerId || teamPlayer._id, // Use playerId first!
-      name: teamPlayer.name,
-      role: teamPlayer.role,
-      isLinked: !!teamPlayer.playerId
-    }));
-    
-    setBattingTeamPlayers(battingPlayers);
+  // ✅ NEW: Poll auto-play status when active
+  useEffect(() => {
+    if (autoPlayMode && autoPlayStatus.isPlaying && currentMatch) {
+      const interval = setInterval(() => {
+        fetchAutoPlayStatus();
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [autoPlayMode, autoPlayStatus.isPlaying, currentMatch]);
 
-    // ✅ Fetch bowling team
-    const bowlResponse = await fetch(`${BACKEND_URL}/api/v1/team-registrations/${bowlingTeamId}`);
-    if (!bowlResponse.ok) throw new Error('Failed to fetch bowling team');
-    const bowlData = await bowlResponse.json();
-    
-    const bowlingPlayers = (bowlData.data.players || []).map(teamPlayer => ({
-      _id: teamPlayer.playerId || teamPlayer._id, // Use playerId first!
-      name: teamPlayer.name,
-      role: teamPlayer.role,
-      isLinked: !!teamPlayer.playerId
-    }));
-    
-    setBowlingTeamPlayers(bowlingPlayers);
+  // ✅ NEW: Fetch auto-play status
+  const fetchAutoPlayStatus = async () => {
+    if (!currentMatch) return;
+    try {
+      const response = await fetch(
+        `${BACKEND_URL}/api/v1/auto-play/${currentMatch._id}/status`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setAutoPlayStatus(data.data);
+      }
+    } catch (err) {
+      console.error("Status fetch error:", err);
+    }
+  };
 
-    // ✅ Warning if players not linked
-    const unlinkedBatting = battingPlayers.filter(p => !p.isLinked);
-    const unlinkedBowling = bowlingPlayers.filter(p => !p.isLinked);
-    
-    if (unlinkedBatting.length > 0 || unlinkedBowling.length > 0) {
-      console.warn('⚠️ Some players not linked to Player collection. Stats may not update!', {
-        batting: unlinkedBatting.map(p => p.name),
-        bowling: unlinkedBowling.map(p => p.name)
-      });
+  // ✅ NEW: File upload handler
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith(".json")) {
+      alert("Please upload a JSON file");
+      return;
     }
 
-    console.log("✅ Players fetched");
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const jsonData = JSON.parse(event.target.result);
 
-  } catch (err) {
-    console.error("❌ Error fetching team players:", err);
-    alert(`Error fetching players: ${err.message}.`);
-  }
-};
-  
+          const response = await fetch(
+            `${BACKEND_URL}/api/v1/auto-play/${currentMatch._id}/upload`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(jsonData),
+            }
+          );
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message);
+          }
+
+          const result = await response.json();
+          setUploadedFile(file.name);
+          alert(`✅ File uploaded successfully!
+        
+Total Innings: ${result.data.totalInnings}
+Total Balls: ${result.data.totalBalls}
+Players Found: ${result.data.playersFound}`);
+
+          fetchAutoPlayStatus();
+        } catch (err) {
+          console.error("Upload error:", err);
+          alert(`Error: ${err.message}`);
+        }
+      };
+      reader.readAsText(file);
+    } catch (err) {
+      alert("Error reading file");
+    }
+  };
+
+  // ✅ NEW: Start auto-play
+  const handleStartAutoPlay = async () => {
+    try {
+      const response = await fetch(
+        `${BACKEND_URL}/api/v1/auto-play/${currentMatch._id}/start`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ speed: autoPlayStatus.speed }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+
+      alert("▶️ Auto-play started!");
+      fetchAutoPlayStatus();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  // ✅ NEW: Pause auto-play
+  const handlePauseAutoPlay = async () => {
+    try {
+      await fetch(`${BACKEND_URL}/api/v1/auto-play/${currentMatch._id}/pause`, {
+        method: "POST",
+      });
+      fetchAutoPlayStatus();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  // ✅ NEW: Stop auto-play
+  const handleStopAutoPlay = async () => {
+    if (!confirm("Stop and reset auto-play?")) return;
+
+    try {
+      await fetch(`${BACKEND_URL}/api/v1/auto-play/${currentMatch._id}/stop`, {
+        method: "POST",
+      });
+      fetchAutoPlayStatus();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  // ✅ NEW: Change speed
+  const handleSpeedChange = async (newSpeed) => {
+    try {
+      await fetch(`${BACKEND_URL}/api/v1/auto-play/${currentMatch._id}/speed`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ speed: newSpeed }),
+      });
+      fetchAutoPlayStatus();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const fetchTeamPlayers = async (battingTeamId, bowlingTeamId) => {
+    if (!battingTeamId || !bowlingTeamId) return;
+    try {
+      console.log(
+        `Fetching players for Batting: ${battingTeamId}, Bowling: ${bowlingTeamId}`
+      );
+
+      const batResponse = await fetch(
+        `${BACKEND_URL}/api/v1/team-registrations/${battingTeamId}`
+      );
+      if (!batResponse.ok) throw new Error("Failed to fetch batting team");
+      const batData = await batResponse.json();
+
+      const battingPlayers = (batData.data.players || []).map((teamPlayer) => ({
+        _id: teamPlayer.playerId || teamPlayer._id,
+        name: teamPlayer.name,
+        role: teamPlayer.role,
+        isLinked: !!teamPlayer.playerId,
+      }));
+
+      setBattingTeamPlayers(battingPlayers);
+
+      const bowlResponse = await fetch(
+        `${BACKEND_URL}/api/v1/team-registrations/${bowlingTeamId}`
+      );
+      if (!bowlResponse.ok) throw new Error("Failed to fetch bowling team");
+      const bowlData = await bowlResponse.json();
+
+      const bowlingPlayers = (bowlData.data.players || []).map(
+        (teamPlayer) => ({
+          _id: teamPlayer.playerId || teamPlayer._id,
+          name: teamPlayer.name,
+          role: teamPlayer.role,
+          isLinked: !!teamPlayer.playerId,
+        })
+      );
+
+      setBowlingTeamPlayers(bowlingPlayers);
+
+      const unlinkedBatting = battingPlayers.filter((p) => !p.isLinked);
+      const unlinkedBowling = bowlingPlayers.filter((p) => !p.isLinked);
+
+      if (unlinkedBatting.length > 0 || unlinkedBowling.length > 0) {
+        console.warn(
+          "⚠️ Some players not linked to Player collection. Stats may not update!",
+          {
+            batting: unlinkedBatting.map((p) => p.name),
+            bowling: unlinkedBowling.map((p) => p.name),
+          }
+        );
+      }
+
+      console.log("✅ Players fetched");
+    } catch (err) {
+      console.error("❌ Error fetching team players:", err);
+      alert(`Error fetching players: ${err.message}.`);
+    }
+  };
+
   const fetchMatches = async () => {
     try {
       setLoading(true);
@@ -1037,43 +1515,58 @@ export default function ScorerDashboard() {
       }
 
       const data = await response.json();
-      
-      if ((activeTab === "live" || activeTab === "completed") && data.data?.length > 0) {
+
+      if (
+        (activeTab === "live" || activeTab === "completed") &&
+        data.data?.length > 0
+      ) {
         const matchesWithLiveData = await Promise.all(
           data.data.map(async (match) => {
             try {
-              const liveResponse = await fetch(`${BACKEND_URL}/api/v1/live-matches/${match._id}`);
+              const liveResponse = await fetch(
+                `${BACKEND_URL}/api/v1/live-matches/${match._id}`
+              );
               const liveData = await liveResponse.json();
-              
+
               if (liveData.success && liveData.data.innings) {
                 const innings = liveData.data.innings;
-                
+
                 const getTeamScore = (teamId) => {
-                  const currentInnings = innings[liveData.data.currentInnings - 1];
-                  if (currentInnings?.battingTeam?._id?.toString() === teamId?.toString()) {
+                  const currentInnings =
+                    innings[liveData.data.currentInnings - 1];
+                  if (
+                    currentInnings?.battingTeam?._id?.toString() ===
+                    teamId?.toString()
+                  ) {
                     return {
                       score: currentInnings.score || 0,
                       wickets: currentInnings.wickets || 0,
                       overs: currentInnings.overs || 0,
                     };
                   }
-                  
-                  if (innings[0]?.battingTeam?._id?.toString() === teamId?.toString()) {
+
+                  if (
+                    innings[0]?.battingTeam?._id?.toString() ===
+                    teamId?.toString()
+                  ) {
                     return {
                       score: innings[0].score || 0,
                       wickets: innings[0].wickets || 0,
                       overs: innings[0].overs || 0,
                     };
                   }
-                  
-                  if (innings[1]?.battingTeam?._id?.toString() === teamId?.toString()) {
+
+                  if (
+                    innings[1]?.battingTeam?._id?.toString() ===
+                    teamId?.toString()
+                  ) {
                     return {
                       score: innings[1].score || 0,
                       wickets: innings[1].wickets || 0,
                       overs: innings[1].overs || 0,
                     };
                   }
-                  
+
                   return { score: 0, wickets: 0, overs: 0 };
                 };
 
@@ -1092,7 +1585,10 @@ export default function ScorerDashboard() {
               }
               return match;
             } catch (err) {
-              console.error(`Error fetching live data for match ${match._id}:`, err);
+              console.error(
+                `Error fetching live data for match ${match._id}:`,
+                err
+              );
               return match;
             }
           })
@@ -1113,7 +1609,6 @@ export default function ScorerDashboard() {
     }
   };
 
-  // --- UPDATED fetchLiveMatchData ---
   const fetchLiveMatchData = async () => {
     if (!currentMatch) return null;
 
@@ -1130,39 +1625,34 @@ export default function ScorerDashboard() {
       console.log("📊 Live Match Data:", data.data);
       setLiveMatchData(data.data);
 
-      // --- NEW LOGIC ---
-      // If player lists are empty (e.g., first load or new innings), fetch them.
-      if (data.data.innings && (battingTeamPlayers.length === 0 || bowlingTeamPlayers.length === 0)) {
-        const currentInnings = data.data.innings[data.data.currentInnings - 1];
+      if (
+        data.data.innings &&
+        (battingTeamPlayers.length === 0 || bowlingTeamPlayers.length === 0)
+      ) {
+        const currentInnings =
+          data.data.innings[data.data.currentInnings - 1];
         const battingTeamId = currentInnings.battingTeam?._id;
         const bowlingTeamId = currentInnings.bowlingTeam?._id;
-        
+
         if (battingTeamId && bowlingTeamId) {
-          // Pass the IDs from the *LiveMatch* model, which should link to TeamRegistration
           await fetchTeamPlayers(battingTeamId, bowlingTeamId);
-          // Set initial over number
           setLastOver(Math.floor(currentInnings.overs || 0));
         }
       }
-      // --- END NEW LOGIC ---
 
-      // Update last balls
       const currentInnings = data.data.innings[data.data.currentInnings - 1];
       if (currentInnings && currentInnings.ballByBall) {
         const recent = currentInnings.ballByBall.slice(-6).reverse();
         setLastBalls(
-          recent.map((b) =>
-            b.runs === 0 && b.isWicket ? "W" : b.runs.toString()
-          )
+          recent.map((b) => (b.runs === 0 && b.isWicket ? "W" : b.runs.toString()))
         );
       }
-      return data.data; // Return the new data
+      return data.data;
     } catch (err) {
       console.error("❌ Error fetching live match:", err);
-      return null; // Return null on error
+      return null;
     }
   };
-
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) {
@@ -1174,16 +1664,17 @@ export default function ScorerDashboard() {
     alert("Redirecting to Create Match form...");
   };
 
-  const handleStartScoring = async (match = null) => {
-    // Check if a match is provided or if it's the first in the 'live' list
-    const matchToScore = match || matches.find(m => m.status === 'InProgress') || matches[0];
-    
+  const handleStartScoring = async (match = null, mode = "manual") => {
+    const matchToScore =
+      match ||
+      matches.find((m) => m.status === "InProgress") ||
+      matches[0];
+
     if (!matchToScore) {
       alert("No match available to score.");
       return;
     }
 
-    // Check if match is already initialized
     try {
       const response = await fetch(
         `${BACKEND_URL}/api/v1/live-matches/${matchToScore._id}`
@@ -1206,6 +1697,7 @@ export default function ScorerDashboard() {
     }
 
     setCurrentMatch(matchToScore);
+    setAutoPlayMode(mode === "auto");
     setCurrentView("scoring");
   };
 
@@ -1218,8 +1710,8 @@ export default function ScorerDashboard() {
         },
         body: JSON.stringify({
           matchId: match._id,
-          tossWinner: match.teamA._id, // Default to teamA, can be made dynamic
-          choice: "bat", // Default choice, can be made dynamic
+          tossWinner: match.teamA._id,
+          choice: "bat",
         }),
       });
 
@@ -1238,12 +1730,10 @@ export default function ScorerDashboard() {
     }
   };
 
-  // --- UPDATED handleBackToDashboard ---
   const handleBackToDashboard = () => {
     setCurrentView("dashboard");
     setCurrentMatch(null);
     setLiveMatchData(null);
-    // Clear all scoring state
     setOnStrikeBatsman("");
     setNonStrikeBatsman("");
     setCurrentBowler("");
@@ -1251,16 +1741,27 @@ export default function ScorerDashboard() {
     setBowlingTeamPlayers([]);
     setLastOver(0);
     setLastBalls([]);
+    setAutoPlayMode(false);
+    setUploadedFile(null);
+    setAutoPlayStatus({
+      isPlaying: false,
+      isPaused: false,
+      currentBall: 0,
+      totalBalls: 0,
+      speed: 1,
+      progress: 0,
+    });
   };
 
   const handleViewStats = () => {
     alert("Opening statistics dashboard...");
   };
 
-  // --- ‼️ FINAL UPDATED handleBallClick ‼️ ---
   const handleBallClick = async (value) => {
     if (!onStrikeBatsman || !nonStrikeBatsman || !currentBowler) {
-      alert("Please select On-Strike Batsman, Non-Strike Batsman, and Current Bowler first!");
+      alert(
+        "Please select On-Strike Batsman, Non-Strike Batsman, and Current Bowler first!"
+      );
       return;
     }
 
@@ -1276,25 +1777,22 @@ export default function ScorerDashboard() {
     setScoringLoading(true);
 
     try {
-      // ✅ Get IDs to send to the backend
       const battingTeamId = currentInnings.battingTeam?._id;
       const bowlingTeamId = currentInnings.bowlingTeam?._id;
-      const batsmanName = battingTeamPlayers.find(p => p._id === onStrikeBatsman)?.name;
-      const bowlerName = bowlingTeamPlayers.find(p => p._id === currentBowler)?.name;
-
+      const batsmanName = battingTeamPlayers.find(
+        (p) => p._id === onStrikeBatsman
+      )?.name;
+      const bowlerName = bowlingTeamPlayers.find(
+        (p) => p._id === currentBowler
+      )?.name;
 
       let ballData = {
-        // --- IDs for saving stats ---
         batsmanId: onStrikeBatsman,
         bowlerId: currentBowler,
         battingTeamId: battingTeamId,
         bowlingTeamId: bowlingTeamId,
-        
-        // --- Names for commentary (optional) ---
         batsmanName: batsmanName,
         bowlerName: bowlerName,
-        
-        // --- Ball data ---
         runs: 0,
         extras: 0,
         extrasType: "none",
@@ -1303,11 +1801,10 @@ export default function ScorerDashboard() {
         commentary: "",
       };
 
-      // Parse button value
       if (value === "W") {
         ballData.isWicket = true;
-        ballData.wicketType = "caught"; // Default
-        ballData.commentary = `WICKET! ${batsmanName || 'Batsman'} is out!`;
+        ballData.wicketType = "caught";
+        ballData.commentary = `WICKET! ${batsmanName || "Batsman"} is out!`;
       } else if (value === "WD") {
         ballData.extras = 1;
         ballData.extrasType = "wide";
@@ -1347,61 +1844,58 @@ export default function ScorerDashboard() {
       const result = await response.json();
       console.log("✅ Ball updated:", result);
 
-      // Refresh live data AND get the new state
       const newLiveMatchData = await fetchLiveMatchData();
       setLastBalls([value, ...lastBalls.slice(0, 5)]);
 
-      // --- NEW STRIKE ROTATION LOGIC ---
-      if (!newLiveMatchData) return; // Exit if fetch failed
+      if (!newLiveMatchData) return;
 
       const runs = parseInt(value);
       const isOddRun = [1, 3, 5].includes(runs);
       const isLegalBall = value !== "WD" && value !== "NB";
 
-      // 1. Handle Wicket
       if (value === "W") {
-        setOnStrikeBatsman(""); // Clear the on-strike batsman
-        
-        const updatedInnings = newLiveMatchData.innings[newLiveMatchData.currentInnings - 1];
+        setOnStrikeBatsman("");
+
+        const updatedInnings =
+          newLiveMatchData.innings[newLiveMatchData.currentInnings - 1];
         if (updatedInnings.wickets >= 10) {
           setTimeout(() => {
             alert('10 wickets down! Click "End Innings" to proceed.');
           }, 100);
         } else {
           setTimeout(() => {
-            alert("WICKET! Please select the new batsman from the 'On Strike' dropdown.");
+            alert(
+              "WICKET! Please select the new batsman from the 'On Strike' dropdown."
+            );
           }, 100);
         }
-      }
-      // 2. Handle Odd Runs (and not a wicket)
-      else if (isOddRun) {
+      } else if (isOddRun) {
         const temp = onStrikeBatsman;
         setOnStrikeBatsman(nonStrikeBatsman);
         setNonStrikeBatsman(temp);
       }
 
-      // 3. Handle End of Over (only on legal balls)
       if (isLegalBall && newLiveMatchData.innings) {
-        const newInningsData = newLiveMatchData.innings[newLiveMatchData.currentInnings - 1];
+        const newInningsData =
+          newLiveMatchData.innings[newLiveMatchData.currentInnings - 1];
         const newOverNum = Math.floor(newInningsData.overs);
 
         if (newOverNum > lastOver) {
-          setLastOver(newOverNum); // Update the over count
-          
-          // Swap strike (end of over rotation)
+          setLastOver(newOverNum);
+
           const temp = onStrikeBatsman;
           setOnStrikeBatsman(nonStrikeBatsman);
           setNonStrikeBatsman(temp);
-          
+
           setCurrentBowler("");
-          
+
           setTimeout(() => {
-            alert("OVER COMPLETE! Strike rotated. Please select a new bowler.");
+            alert(
+              "OVER COMPLETE! Strike rotated. Please select a new bowler."
+            );
           }, 100);
         }
       }
-      // --- END STRIKE ROTATION LOGIC ---
-
     } catch (err) {
       console.error("❌ Error updating ball:", err);
       alert(`Error: ${err.message}`);
@@ -1410,186 +1904,180 @@ export default function ScorerDashboard() {
     }
   };
 
+  const handleEndInnings = async () => {
+    const currentInnings =
+      liveMatchData.innings[liveMatchData.currentInnings - 1];
+    const totalOvers = liveMatchData.totalOvers || 20;
 
-  // --- ✅ UPDATED handleEndInnings WITH INNINGS DATA ---
-const handleEndInnings = async () => {
-  const currentInnings = liveMatchData.innings[liveMatchData.currentInnings - 1];
-  const totalOvers = liveMatchData.totalOvers || 20;
+    if (currentInnings.wickets >= 10 || currentInnings.overs >= totalOvers) {
+      console.log(
+        `✅ Innings ${liveMatchData.currentInnings} auto-complete triggered`
+      );
+    } else {
+      const confirmEnd = window.confirm(
+        `Are you sure you want to end this innings early?\n\n` +
+          `Current: ${currentInnings.score}/${currentInnings.wickets} in ${currentInnings.overs} overs\n\n` +
+          `Note: Innings not yet complete (less than ${totalOvers} overs or 10 wickets).`
+      );
+      if (!confirmEnd) return;
+    }
 
-  if (currentInnings.wickets >= 10 || currentInnings.overs >= totalOvers) {
-    console.log(`✅ Innings ${liveMatchData.currentInnings} auto-complete triggered`);
-  } else {
-    const confirmEnd = window.confirm(
-      `Are you sure you want to end this innings early?\n\n` +
-        `Current: ${currentInnings.score}/${currentInnings.wickets} in ${currentInnings.overs} overs\n\n` +
-        `Note: Innings not yet complete (less than ${totalOvers} overs or 10 wickets).`
-    );
-    if (!confirmEnd) return;
-  }
+    try {
+      setScoringLoading(true);
 
-  try {
-    setScoringLoading(true);
+      const innings1 = liveMatchData.innings[0];
+      const innings2 = liveMatchData.innings[1] || null;
 
-    // ✅ NEW: Process ballByBall data to extract batsmen & bowlers
-    const innings1 = liveMatchData.innings[0];
-    const innings2 = liveMatchData.innings[1] || null;
+      const aggregateInningsStats = (innings) => {
+        const batsmenMap = {};
+        const bowlersMap = {};
 
-    // ✅ Helper function to aggregate player stats from ballByBall
-    const aggregateInningsStats = (innings) => {
-      const batsmenMap = {};
-      const bowlersMap = {};
+        for (const ball of innings.ballByBall || []) {
+          if (ball.batsmanId) {
+            if (!batsmenMap[ball.batsmanId]) {
+              batsmenMap[ball.batsmanId] = {
+                playerId: ball.batsmanId,
+                playerName: ball.batsmanName || ball.batsman || "Unknown",
+                runs: 0,
+                balls: 0,
+                fours: 0,
+                sixes: 0,
+                isOut: false,
+              };
+            }
 
-      // Process each ball
-      for (const ball of innings.ballByBall || []) {
-        // Aggregate batsman stats
-        if (ball.batsmanId) {
-          if (!batsmenMap[ball.batsmanId]) {
-            batsmenMap[ball.batsmanId] = {
-              playerId: ball.batsmanId,
-              playerName: ball.batsmanName || ball.batsman || "Unknown",
-              runs: 0,
-              balls: 0,
-              fours: 0,
-              sixes: 0,
-              isOut: false
-            };
+            batsmenMap[ball.batsmanId].runs += ball.runs || 0;
+
+            if (
+              ball.extrasType !== "wide" &&
+              ball.extrasType !== "noBall"
+            ) {
+              batsmenMap[ball.batsmanId].balls += 1;
+            }
+
+            if (ball.runs === 4) batsmenMap[ball.batsmanId].fours += 1;
+            if (ball.runs === 6) batsmenMap[ball.batsmanId].sixes += 1;
+            if (ball.isWicket) batsmenMap[ball.batsmanId].isOut = true;
           }
-          
-          batsmenMap[ball.batsmanId].runs += ball.runs || 0;
-          
-          // Count legal deliveries (not wides/no-balls)
-          if (ball.extrasType !== "wide" && ball.extrasType !== "noBall") {
-            batsmenMap[ball.batsmanId].balls += 1;
+
+          if (ball.bowlerId) {
+            if (!bowlersMap[ball.bowlerId]) {
+              bowlersMap[ball.bowlerId] = {
+                playerId: ball.bowlerId,
+                playerName: ball.bowlerName || ball.bowler || "Unknown",
+                wickets: 0,
+                balls: 0,
+                runs: 0,
+                maidens: 0,
+              };
+            }
+
+            bowlersMap[ball.bowlerId].runs +=
+              (ball.runs || 0) + (ball.extras || 0);
+
+            if (
+              ball.extrasType !== "wide" &&
+              ball.extrasType !== "noBall"
+            ) {
+              bowlersMap[ball.bowlerId].balls += 1;
+            }
+
+            if (ball.isWicket) bowlersMap[ball.bowlerId].wickets += 1;
           }
-          
-          if (ball.runs === 4) batsmenMap[ball.batsmanId].fours += 1;
-          if (ball.runs === 6) batsmenMap[ball.batsmanId].sixes += 1;
-          if (ball.isWicket) batsmenMap[ball.batsmanId].isOut = true;
         }
 
-        // Aggregate bowler stats
-        if (ball.bowlerId) {
-          if (!bowlersMap[ball.bowlerId]) {
-            bowlersMap[ball.bowlerId] = {
-              playerId: ball.bowlerId,
-              playerName: ball.bowlerName || ball.bowler || "Unknown",
-              wickets: 0,
-              balls: 0,
-              runs: 0,
-              maidens: 0
-            };
-          }
-          
-          bowlersMap[ball.bowlerId].runs += (ball.runs || 0) + (ball.extras || 0);
-          
-          // Count legal deliveries
-          if (ball.extrasType !== "wide" && ball.extrasType !== "noBall") {
-            bowlersMap[ball.bowlerId].balls += 1;
-          }
-          
-          if (ball.isWicket) bowlersMap[ball.bowlerId].wickets += 1;
-        }
-      }
-
-      return {
-        battingTeamId: innings.battingTeam?._id,
-        bowlingTeamId: innings.bowlingTeam?._id,
-        score: innings.score || 0,
-        wickets: innings.wickets || 0,
-        overs: innings.overs || 0,
-        batsmen: Object.values(batsmenMap),
-        bowlers: Object.values(bowlersMap),
-        ballByBall: innings.ballByBall || []
+        return {
+          battingTeamId: innings.battingTeam?._id,
+          bowlingTeamId: innings.bowlingTeam?._id,
+          score: innings.score || 0,
+          wickets: innings.wickets || 0,
+          overs: innings.overs || 0,
+          batsmen: Object.values(batsmenMap),
+          bowlers: Object.values(bowlersMap),
+          ballByBall: innings.ballByBall || [],
+        };
       };
-    };
 
-    // ✅ Prepare innings data with player stats
-    const inningsData = {
-      innings: [aggregateInningsStats(innings1)]
-    };
+      const inningsData = {
+        innings: [aggregateInningsStats(innings1)],
+      };
 
-    // Add second innings if exists
-    if (innings2) {
-      inningsData.innings.push(aggregateInningsStats(innings2));
-    }
-
-    console.log("📤 Sending innings data with player stats:", inningsData);
-
-    // ✅ First complete the innings
-    const response = await fetch(
-      `${BACKEND_URL}/api/v1/live-matches/${currentMatch._id}/complete-innings`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      if (innings2) {
+        inningsData.innings.push(aggregateInningsStats(innings2));
       }
-    );
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to end innings");
-    }
+      console.log("📤 Sending innings data with player stats:", inningsData);
 
-    const result = await response.json();
-    console.log("✅ Innings ended:", result);
-
-    // ✅ If this was the LAST innings (2nd innings), complete the match WITH innings data
-    if (liveMatchData.currentInnings === 2) {
-      console.log("🏆 Completing match with player stats...");
-      
-      const completeResponse = await fetch(
-        `${BACKEND_URL}/api/v1/matches/${currentMatch._id}`,
+      const response = await fetch(
+        `${BACKEND_URL}/api/v1/live-matches/${currentMatch._id}/complete-innings`,
         {
-          method: "PATCH",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            status: "Completed",
-            ...inningsData, // ✅ Send innings data WITH batsmen/bowlers
-          }),
         }
       );
 
-      if (!completeResponse.ok) {
-        const errorData = await completeResponse.json();
-        throw new Error(errorData.message || "Failed to complete match");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to end innings");
       }
 
-      const completeResult = await completeResponse.json();
-      console.log("✅ Match completed with player stats:", completeResult);
+      const result = await response.json();
+      console.log("✅ Innings ended:", result);
 
-      alert("🏆 Match completed! Player stats updated! Redirecting...");
-      
-      setTimeout(() => {
-        handleBackToDashboard();
-      }, 2000);
-      
-      return;
+      if (liveMatchData.currentInnings === 2) {
+        console.log("🏆 Completing match with player stats...");
+
+        const completeResponse = await fetch(
+          `${BACKEND_URL}/api/v1/matches/${currentMatch._id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              status: "Completed",
+              ...inningsData,
+            }),
+          }
+        );
+
+        if (!completeResponse.ok) {
+          const errorData = await completeResponse.json();
+          throw new Error(errorData.message || "Failed to complete match");
+        }
+
+        const completeResult = await completeResponse.json();
+        console.log("✅ Match completed with player stats:", completeResult);
+
+        alert("🏆 Match completed! Player stats updated! Redirecting...");
+
+        setTimeout(() => {
+          handleBackToDashboard();
+        }, 2000);
+
+        return;
+      }
+
+      setOnStrikeBatsman("");
+      setNonStrikeBatsman("");
+      setCurrentBowler("");
+      setBattingTeamPlayers([]);
+      setBowlingTeamPlayers([]);
+      setLastOver(0);
+      setLastBalls([]);
+
+      alert("✅ First innings ended! Starting second innings...");
+      await fetchLiveMatchData();
+    } catch (err) {
+      console.error("❌ Error ending innings:", err);
+      alert(`Error: ${err.message}`);
+    } finally {
+      setScoringLoading(false);
     }
+  };
 
-    // Clear fields for next innings
-    setOnStrikeBatsman("");
-    setNonStrikeBatsman("");
-    setCurrentBowler("");
-    setBattingTeamPlayers([]);
-    setBowlingTeamPlayers([]);
-    setLastOver(0);
-    setLastBalls([]);
-
-    alert("✅ First innings ended! Starting second innings...");
-    await fetchLiveMatchData();
-    
-  } catch (err) {
-    console.error("❌ Error ending innings:", err);
-    alert(`Error: ${err.message}`);
-  } finally {
-    setScoringLoading(false);
-  }
-};
-
-  // This function stays inside as it depends on state
   const renderMatches = () => {
     if (loading) {
       return (
@@ -1675,25 +2163,49 @@ const handleEndInnings = async () => {
               }}
             >
               <div>
-                <div style={{ fontSize: "14px", color: "#6b7280", marginBottom: "4px" }}>
+                <div
+                  style={{
+                    fontSize: "14px",
+                    color: "#6b7280",
+                    marginBottom: "4px",
+                  }}
+                >
                   {match.teamA?.teamName}
                 </div>
                 <div style={styles.score}>
                   {match.scoreA || 0}/{match.wicketsA || 0}
                 </div>
-                <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#6b7280",
+                    marginTop: "2px",
+                  }}
+                >
                   ({match.oversA || 0} ov)
                 </div>
               </div>
               <div style={{ fontSize: "24px", color: "#9ca3af" }}>vs</div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: "14px", color: "#6b7280", marginBottom: "4px" }}>
+                <div
+                  style={{
+                    fontSize: "14px",
+                    color: "#6b7280",
+                    marginBottom: "4px",
+                  }}
+                >
                   {match.teamB?.teamName}
                 </div>
                 <div style={styles.score}>
                   {match.scoreB || 0}/{match.wicketsB || 0}
                 </div>
-                <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#6b7280",
+                    marginTop: "2px",
+                  }}
+                >
                   ({match.oversB || 0} ov)
                 </div>
               </div>
@@ -1721,22 +2233,43 @@ const handleEndInnings = async () => {
           </div>
         )}
 
+        {/* ✅ Modified buttons for Manual/Auto-Play selection */}
         {match.status === "InProgress" && (
-          <button
-            style={styles.continueBtn}
-            onClick={() => handleStartScoring(match)}
-            onMouseEnter={(e) => (e.target.style.background = "#15803d")}
-            onMouseLeave={(e) => (e.target.style.background = "#16a34a")}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "12px",
+              marginTop: "16px",
+            }}
           >
-            <Play size={20} />
-            Continue Scoring
-          </button>
+            <button
+              style={styles.continueBtn}
+              onClick={() => handleStartScoring(match, "manual")}
+              onMouseEnter={(e) => (e.target.style.background = "#15803d")}
+              onMouseLeave={(e) => (e.target.style.background = "#16a34a")}
+            >
+              <Play size={20} />
+              Manual Scoring
+            </button>
+            <button
+              style={{
+                ...styles.continueBtn,
+                background: "#6366f1",
+              }}
+              onClick={() => handleStartScoring(match, "auto")}
+              onMouseEnter={(e) => (e.target.style.background = "#4f46e5")}
+              onMouseLeave={(e) => (e.target.style.background = "#6366f1")}
+            >
+              <Upload size={20} />
+              Auto-Play Mode
+            </button>
+          </div>
         )}
       </div>
     ));
   };
 
-  // Call renderMatches to get the JSX
   const renderedMatchesComponent = renderMatches();
 
   return (
@@ -1744,20 +2277,19 @@ const handleEndInnings = async () => {
       <Header />
       <div style={styles.container}>
         <style>{`
-                    @keyframes pulse {
-                        0%, 100% { opacity: 1; }
-                        50% { opacity: 0.7; }
-                    }
-                    button:hover {
-                        transform: translateY(-2px);
-                    }
-                    .match-card:hover {
-                        border-color: #7c3aed !important;
-                        box-shadow: 0 10px 20px rgba(124, 58, 237, 0.3) !important;
-                    }
-                `}</style>
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+          button:hover {
+            transform: translateY(-2px);
+          }
+          .match-card:hover {
+            border-color: #7c3aed !important;
+            box-shadow: 0 10px 20px rgba(124, 58, 237, 0.3) !important;
+          }
+        `}</style>
 
-        {/* Custom Header for Scoring View */}
         {currentView === "scoring" && (
           <div style={styles.header}>
             <div style={styles.headerContent}>
@@ -1792,7 +2324,6 @@ const handleEndInnings = async () => {
           </div>
         )}
 
-        {/* Conditional Rendering */}
         {currentView === "dashboard" ? (
           <Dashboard
             scorerName={scorerName}
@@ -1819,6 +2350,15 @@ const handleEndInnings = async () => {
             handleBallClick={handleBallClick}
             handleEndInnings={handleEndInnings}
             scoringLoading={scoringLoading}
+            autoPlayMode={autoPlayMode}
+            uploadedFile={uploadedFile}
+            setUploadedFile={setUploadedFile}
+            autoPlayStatus={autoPlayStatus}
+            handleFileUpload={handleFileUpload}
+            handleStartAutoPlay={handleStartAutoPlay}
+            handlePauseAutoPlay={handlePauseAutoPlay}
+            handleStopAutoPlay={handleStopAutoPlay}
+            handleSpeedChange={handleSpeedChange}
           />
         )}
       </div>

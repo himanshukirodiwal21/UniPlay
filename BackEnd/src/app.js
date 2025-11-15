@@ -11,8 +11,8 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json({ limit: "16kb" }));
-app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
@@ -24,6 +24,7 @@ import teamRegistrationRoutes from "./routes/teamRegistration.routes.js";
 import matchRoutes from "./routes/match.routes.js";
 import liveMatchRoutes from "./routes/liveMatch.routes.js"; // ✨ NEW
 import playerRouter from "./routes/player.routes.js";
+import autoPlayRouter from "./routes/autoPlay.routes.js";
 
 // ✅ Routes declaration
 app.use("/api/v1/users", userRouter);
@@ -33,6 +34,8 @@ app.use("/api/v1/team-registrations", teamRegistrationRoutes);
 app.use("/api/v1/matches", matchRoutes);
 app.use("/api/v1/live-matches", liveMatchRoutes); // ✨ NEW LIVE MATCH ROUTE
 app.use("/api/v1/players", playerRouter);
+app.use("/api/v1/auto-play", autoPlayRouter);
+
 
 // ✅ Health check route
 app.get("/", (req, res) => {

@@ -33,7 +33,17 @@ const ballSchema = new Schema({
   },
   extrasType: {
     type: String,
-    enum: ['wide', 'noBall', 'bye', 'legBye', 'none'],
+    enum: [
+      'wide',
+      'wides',      // ✅ Added - Cricsheet uses this
+      'noBall',
+      'noballs',    // ✅ Added - Cricsheet uses this
+      'bye',
+      'byes',       // ✅ Added - Cricsheet uses this
+      'legBye',
+      'legbyes',    // ✅ Added - Cricsheet uses this
+      'none'
+    ],
     default: 'none'
   },
   isWicket: {
@@ -42,11 +52,32 @@ const ballSchema = new Schema({
   },
   wicketType: {
     type: String,
-    enum: ['bowled', 'caught', 'lbw', 'runOut', 'stumped', 'hitWicket', 'none'],
+    enum: [
+      'bowled',
+      'caught',
+      'caught and bowled',      // ✅ Added
+      'caught behind',          // ✅ Added
+      'lbw',
+      'runOut',
+      'run out',                // ✅ Added - Cricsheet format
+      'stumped',
+      'hitWicket',
+      'hit wicket',             // ✅ Added - Cricsheet format
+      'obstructing the field',  // ✅ Added
+      'hit the ball twice',     // ✅ Added
+      'timed out',              // ✅ Added
+      'retired hurt',           // ✅ Added
+      'handled the ball',       // ✅ Added
+      'none'
+    ],
     default: 'none'
   },
   dismissedPlayer: String,
+  dismissedPlayerName: String,  // ✅ Added for consistency
   commentary: String,
+  nonStriker: String,           // ✅ Added
+  reviewType: String,           // ✅ Added
+  playerOut: String,            // ✅ Added
   timestamp: {
     type: Date,
     default: Date.now
