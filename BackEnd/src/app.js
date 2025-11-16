@@ -25,6 +25,8 @@ import matchRoutes from "./routes/match.routes.js";
 import liveMatchRoutes from "./routes/liveMatch.routes.js"; // ✨ NEW
 import playerRouter from "./routes/player.routes.js";
 import autoPlayRouter from "./routes/autoPlay.routes.js";
+import predictionRoutes from './routes/predictions.routes.js';
+
 
 // ✅ Routes declaration
 app.use("/api/v1/users", userRouter);
@@ -35,6 +37,8 @@ app.use("/api/v1/matches", matchRoutes);
 app.use("/api/v1/live-matches", liveMatchRoutes); // ✨ NEW LIVE MATCH ROUTE
 app.use("/api/v1/players", playerRouter);
 app.use("/api/v1/auto-play", autoPlayRouter);
+app.use('/api/v1', predictionRoutes);
+
 
 
 // ✅ Health check route
