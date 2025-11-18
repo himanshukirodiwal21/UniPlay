@@ -717,7 +717,7 @@ export default function LiveMatchView() {
           <div style={styles.topBar}>
             <button
               style={styles.backButton}
-              onClick={() => navigate('/EventMatches')}
+              onClick={() => navigate('/')}
               onMouseEnter={(e) => {
                 e.target.style.background = 'rgba(255, 255, 255, 0.2)';
                 e.target.style.transform = 'translateX(-4px)';

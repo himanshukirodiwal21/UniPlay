@@ -1,0 +1,20 @@
+{
+  "currentInnings": 1,
+  "totalOvers": 20,
+  "innings": [
+    {
+      "score": 120,
+      "wickets": 3,
+      "overs": 15,
+      "battingTeam": {
+        "_id": "team1"
+      }
+    }
+  ],
+  "teamA": {
+    "_id": "team1"
+  },
+  "teamB": {
+    "_id": "team2"
+  }
+}

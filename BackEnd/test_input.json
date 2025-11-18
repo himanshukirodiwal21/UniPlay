@@ -1,0 +1,1 @@
+{"teamA":{"_id":"team1","name":"Team A"},"teamB":{"_id":"team2","name":"Team B"},"currentInnings":1,"totalOvers":20,"innings":[{"score":85,"wickets":3,"overs":12,"battingTeam":{"_id":"team1"}}]}
