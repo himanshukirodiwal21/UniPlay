@@ -1,92 +1,101 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, classification_report
-import xgboost as xgb
-import pickle
-import warnings
-warnings.filterwarnings('ignore')
+import joblib
+import json
 
-print("=" * 60)
-print("🏏 CRICKET MATCH PREDICTION - MODEL TRAINING")
-print("=" * 60)
+print("🏏 IPL Match Winner Prediction Model Training\n")
 
 # Load data
-print("\n📂 Loading training data...")
-df = pd.read_csv('data/training_data.csv')
-print(f"✅ Data loaded: {len(df)} matches")
-print(f"   Features: {list(df.columns)}")
+matches = pd.read_csv('data/matches.csv')
 
-# Prepare features
-print("\n🔧 Preparing features...")
-X = df.drop('team_won', axis=1)
-y = df['team_won']
-print(f"✅ Features prepared: {X.shape}")
-print(f"   Target distribution: Win={sum(y==1)}, Loss={sum(y==0)}")
+# Data cleaning
+matches = matches[matches['winner'].notna()]  # Remove no results
+matches = matches[matches['result'] != 'tie']  # Remove ties
 
-# Split data
-print("\n✂️  Splitting data (80% train, 20% test)...")
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
-print(f"✅ Train set: {len(X_train)} matches")
-print(f"✅ Test set: {len(X_test)} matches")
+print(f"Total matches for training: {len(matches)}")
 
-# Train model
-print("\n🤖 Training XGBoost model...")
-model = xgb.XGBClassifier(
-    n_estimators=100,
-    max_depth=5,
-    learning_rate=0.1,
-    random_state=42
-)
+# Feature Engineering
+features_df = matches[['team1', 'team2', 'venue', 'toss_winner', 'toss_decision', 'winner']].copy()
+
+# Label Encoding
+le_team1 = LabelEncoder()
+le_team2 = LabelEncoder()
+le_venue = LabelEncoder()
+le_toss_winner = LabelEncoder()
+le_toss_decision = LabelEncoder()
+le_winner = LabelEncoder()
+
+features_df['team1_encoded'] = le_team1.fit_transform(features_df['team1'])
+features_df['team2_encoded'] = le_team2.fit_transform(features_df['team2'])
+features_df['venue_encoded'] = le_venue.fit_transform(features_df['venue'])
+features_df['toss_winner_encoded'] = le_toss_winner.fit_transform(features_df['toss_winner'])
+features_df['toss_decision_encoded'] = le_toss_decision.fit_transform(features_df['toss_decision'])
+features_df['winner_encoded'] = le_winner.fit_transform(features_df['winner'])
+
+# Features and Target
+X = features_df[['team1_encoded', 'team2_encoded', 'venue_encoded', 
+                  'toss_winner_encoded', 'toss_decision_encoded']]
+y = features_df['winner_encoded']
+
+# Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Model Training
+print("\n🔧 Training Random Forest Classifier...")
+model = RandomForestClassifier(n_estimators=200, random_state=42, max_depth=15, min_samples_split=5)
 model.fit(X_train, y_train)
-print("✅ Model training complete!")
 
-# Evaluate
-print("\n📊 Evaluating model performance...")
-train_pred = model.predict(X_train)
-test_pred = model.predict(X_test)
-train_acc = accuracy_score(y_train, train_pred)
-test_acc = accuracy_score(y_test, test_pred)
+# Predictions
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
 
-print(f"   Training Accuracy: {train_acc*100:.2f}%")
-print(f"   Test Accuracy: {test_acc*100:.2f}%")
+print(f"\n✅ Model Accuracy: {accuracy * 100:.2f}%")
 
-print("\n📈 Detailed Classification Report:")
-print(classification_report(y_test, test_pred, 
-                          target_names=['Loss', 'Win']))
+# FIXED: Only show classification report for classes present in test set
+print("\n📊 Classification Report:")
+unique_classes = np.unique(y_test)
+target_names = [le_winner.classes_[i] for i in unique_classes]
+print(classification_report(y_test, y_pred, labels=unique_classes, target_names=target_names, zero_division=0))
 
-# Feature importance
-print("🎯 Top 5 Most Important Features:")
-feature_importance = pd.DataFrame({
-    'feature': X.columns,
-    'importance': model.feature_importances_
-}).sort_values('importance', ascending=False)
+# Feature Importance
+feature_names = ['Team 1', 'Team 2', 'Venue', 'Toss Winner', 'Toss Decision']
+importances = model.feature_importances_
+print("\n📈 Feature Importance:")
+for name, importance in zip(feature_names, importances):
+    print(f"  {name}: {importance * 100:.2f}%")
 
-for idx, row in feature_importance.head(5).iterrows():
-    print(f"   {row['feature']:30s} {row['importance']:.4f}")
+# Save Model and Encoders
+print("\n💾 Saving model and encoders...")
+import os
+os.makedirs('models', exist_ok=True)
 
-# Save model
-print("\n💾 Saving trained model...")
-with open('ml_models/model.pkl', 'wb') as f:
-    pickle.dump(model, f)
-print("✅ Model saved: ml_models/model.pkl")
+joblib.dump(model, 'models/match_winner_model.pkl')
+joblib.dump(le_team1, 'models/le_team1.pkl')
+joblib.dump(le_team2, 'models/le_team2.pkl')
+joblib.dump(le_venue, 'models/le_venue.pkl')
+joblib.dump(le_toss_winner, 'models/le_toss_winner.pkl')
+joblib.dump(le_toss_decision, 'models/le_toss_decision.pkl')
+joblib.dump(le_winner, 'models/le_winner.pkl')
 
-# Test prediction
-print("\n🧪 Testing sample prediction...")
-sample = X_test.iloc[0:1]
-prediction = model.predict(sample)[0]
-probability = model.predict_proba(sample)[0]
+# Save metadata for frontend
+metadata = {
+    'teams': sorted(matches['team1'].unique().tolist()),
+    'venues': sorted(matches['venue'].unique().tolist()),
+    'toss_decisions': ['bat', 'field'],
+    'accuracy': float(accuracy),
+    'total_matches': len(matches),
+    'total_teams': len(matches['team1'].unique())
+}
 
-print("   Sample Input:")
-for col in sample.columns:
-    print(f"   {col:30s} {sample[col].values[0]}")
+with open('models/metadata.json', 'w') as f:
+    json.dump(metadata, f, indent=2)
 
-print(f"\n   Prediction: {'WIN' if prediction == 1 else 'LOSS'}")
-print(f"   Win Probability: {probability[1]*100:.2f}%")
-print(f"   Loss Probability: {probability[0]*100:.2f}%")
-
-print("\n" + "=" * 60)
-print("✅ MODEL TRAINING SUCCESSFUL!")
-print("=" * 60)
+print("\n✅ Model training complete!")
+print(f"📁 Files saved in 'models/' folder")
+print(f"🎯 Model accuracy: {accuracy * 100:.2f}%")
+print(f"📊 Total teams: {metadata['total_teams']}")
+print(f"🏟️ Total venues: {len(metadata['venues'])}")

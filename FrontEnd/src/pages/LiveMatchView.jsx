@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 const BACKEND_URL = 'http://localhost:8000';
+const ML_MODEL_URL = 'http://localhost:5000';
 
 export default function LiveMatchView() {
   const { matchId } = useParams();
@@ -52,65 +53,201 @@ export default function LiveMatchView() {
   };
 
   const fetchPrediction = async (matchData) => {
-    if (predictionLoading) return;
+  if (predictionLoading) return;
+  
+  setPredictionLoading(true);
+  setLastPredictionTime(Date.now());
+  
+  try {
+    console.log('🤖 Calling ML Model for LIVE prediction...');
     
-    setPredictionLoading(true);
-    setLastPredictionTime(Date.now());
+    // Team mapping
+    const teamIdToName = {
+      '4': 'Mumbai Indians', '5': 'Chennai Super Kings',
+      '1': 'Royal Challengers Bangalore', '2': 'Kolkata Knight Riders',
+      '3': 'Delhi Capitals', '6': 'Rajasthan Royals',
+      '7': 'Punjab Kings', '8': 'Sunrisers Hyderabad',
+      '9': 'Gujarat Titans', '10': 'Lucknow Super Giants',
+    };
     
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/v1/predict-match`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ matchData }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('API Error Response:', errorData);
-        throw new Error(errorData.error || `API request failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('Prediction Response:', data);
-      
-      if (!data.success || !data.data) {
-        throw new Error("No prediction data in response");
-      }
-
-      const parsed = data.data;
-      
-      if (!parsed.winProbability || 
-          typeof parsed.winProbability.teamA !== 'number' || 
-          typeof parsed.winProbability.teamB !== 'number') {
-        throw new Error("Invalid prediction format");
-      }
-      
-      console.log('Setting prediction:', parsed);
-      setPrediction(parsed);
-      
-    } catch (err) {
-      console.error('Prediction error:', err);
-      
-      const currentInnings = matchData.innings[matchData.currentInnings - 1];
-      
-      setPrediction({
-        winProbability: { teamA: 50, teamB: 50 },
-        predictedScore: currentInnings?.score || 0,
-        keyFactors: [
-          "Prediction temporarily unavailable",
-          "Match situation being analyzed",
-          "Try refreshing in a moment"
-        ],
-        momentum: "neutral",
-        confidence: "low",
-        reasoning: "Unable to generate detailed prediction at this moment"
-      });
-    } finally {
-      setPredictionLoading(false);
+    const team1Raw = matchData.teamA?.teamName || '4';
+    const team2Raw = matchData.teamB?.teamName || '5';
+    const team1Name = teamIdToName[team1Raw] || team1Raw;
+    const team2Name = teamIdToName[team2Raw] || team2Raw;
+    const venueName = matchData.venue || 'Wankhede Stadium';
+    const tossWinnerRaw = matchData.tossWinner?.teamName || team1Raw;
+    const tossWinnerName = teamIdToName[tossWinnerRaw] || tossWinnerRaw;
+    const tossDecisionValue = (matchData.tossDecision || 'bat').toLowerCase();
+    
+    // Get metadata
+    const metadataRes = await fetch(`${ML_MODEL_URL}/metadata`);
+    const metadataJson = await metadataRes.json();
+    const availableTeams = metadataJson.data?.teams || [];
+    const availableVenues = metadataJson.data?.venues || [];
+    
+    const validateTeam = (teamName, availableTeams) => {
+      if (availableTeams.includes(teamName)) return teamName;
+      const similar = availableTeams.find(t => 
+        t.toLowerCase().includes(teamName.toLowerCase())
+      );
+      return similar || 'Mumbai Indians';
+    };
+    
+    const team1 = validateTeam(team1Name, availableTeams);
+    const team2 = validateTeam(team2Name, availableTeams);
+    const venue = availableVenues.includes(venueName) ? venueName : availableVenues[0];
+    const tossWinner = validateTeam(tossWinnerName, availableTeams);
+    
+    // Current match context
+    const currentInnings = matchData.innings[matchData.currentInnings - 1];
+    const currentScore = currentInnings?.score || 0;
+    const currentWickets = currentInnings?.wickets || 0;
+    const currentOvers = currentInnings?.overs || 0;
+    const inningsNumber = matchData.currentInnings;
+    
+    // Determine batting team
+    const battingTeamId = currentInnings?.battingTeam?._id?.toString();
+    const team1Id = matchData.teamA?._id?.toString();
+    const team2Id = matchData.teamB?._id?.toString();
+    
+    const battingTeam = battingTeamId === team1Id ? team1 : team2;
+    const targetScore = inningsNumber === 2 ? (matchData.innings[0]?.score || 0) : 0;
+    
+    console.log('📊 Match Context:', {
+      innings: inningsNumber,
+      batting: battingTeam,
+      score: `${currentScore}/${currentWickets}`,
+      overs: currentOvers,
+      target: targetScore
+    });
+    
+    // === CALL ML LIVE PREDICTION API ===
+    const response = await fetch(`${ML_MODEL_URL}/predict-live`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team1: team1,
+        team2: team2,
+        venue: venue,
+        toss_winner: tossWinner,
+        toss_decision: tossDecisionValue,
+        innings: inningsNumber,
+        current_score: currentScore,
+        current_wickets: currentWickets,
+        current_overs: currentOvers,
+        target_score: targetScore,
+        batting_team: battingTeam
+      })
+    });
+    
+    if (!response.ok) throw new Error('ML Live prediction failed');
+    
+    const data = await response.json();
+    console.log('✅ ML Live Response:', data);
+    
+    if (!data.success) throw new Error(data.error);
+    
+    // Extract ML predictions
+    const predictedWinner = data.predicted_winner;
+    const finalConfidence = data.confidence;
+    const teamAWinProb = data.probabilities.team1;
+    const teamBWinProb = data.probabilities.team2;
+    const baseMlPrediction = data.base_ml_prediction;
+    
+    console.log('🎯 ML Predictions:', {
+      winner: predictedWinner,
+      confidence: finalConfidence,
+      teamA: teamAWinProb,
+      teamB: teamBWinProb,
+      baseMl: baseMlPrediction
+    });
+    
+    // Build key factors
+    const keyFactors = [
+      `🏆 ML Predicted Winner: ${predictedWinner}`,
+      `📊 Live Win Probability: ${finalConfidence.toFixed(1)}%`,
+      `🤖 Base ML Model: ${baseMlPrediction.winner} (${baseMlPrediction.confidence.toFixed(1)}%)`,
+      `🏟️ Venue: ${venue}`,
+      `🪙 Toss: ${tossWinner} chose to ${tossDecisionValue}`,
+    ];
+    
+    if (currentOvers > 0) {
+      keyFactors.push(`⚡ Current: ${currentScore}/${currentWickets} in ${currentOvers} overs`);
+      const runRate = (currentScore / currentOvers).toFixed(2);
+      keyFactors.push(`📈 Current RR: ${runRate}`);
     }
-  };
+    
+    // Score prediction (first innings only)
+    let predictedScore = 0;
+    
+    if (inningsNumber === 1 && currentOvers < 20) {
+      try {
+        const scoreResponse = await fetch(`${ML_MODEL_URL}/predict-score`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            team: battingTeam, venue, toss_winner: tossWinner,
+            toss_decision: tossDecisionValue,
+            current_score: currentScore,
+            current_overs: currentOvers,
+            current_wickets: currentWickets
+          })
+        });
+        
+        if (scoreResponse.ok) {
+          const scoreData = await scoreResponse.json();
+          if (scoreData.success) {
+            predictedScore = scoreData.predicted_score;
+            keyFactors.push(`🎯 Predicted Final Score: ${predictedScore}`);
+          }
+        }
+      } catch (err) {
+        console.warn('Score prediction skipped');
+      }
+    } else if (inningsNumber === 2) {
+      const runsNeeded = targetScore - currentScore + 1;
+      if (runsNeeded > 0) {
+        keyFactors.push(`🎯 Target: ${targetScore + 1}`);
+        keyFactors.push(`📊 Need: ${runsNeeded} runs`);
+      }
+    }
+    
+    // Momentum & confidence
+    const momentum = teamAWinProb > 60 ? 'teamA' : teamBWinProb > 60 ? 'teamB' : 'neutral';
+    const maxProb = Math.max(teamAWinProb, teamBWinProb);
+    const confidenceLevel = maxProb > 70 ? 'high' : maxProb > 55 ? 'medium' : 'low';
+    
+    const reasoning = `ML model dynamically adjusted for live match context. Base prediction: ${baseMlPrediction.winner} (${baseMlPrediction.confidence.toFixed(1)}%). Live probability considers current score (${currentScore}/${currentWickets}), wickets remaining, and match situation.`;
+    
+    const mlPrediction = {
+      winProbability: {
+        teamA: Math.round(teamAWinProb * 10) / 10,
+        teamB: Math.round(teamBWinProb * 10) / 10
+      },
+      predictedScore: predictedScore,
+      keyFactors: keyFactors,
+      momentum: momentum,
+      confidence: confidenceLevel,
+      reasoning: reasoning
+    };
+    
+    console.log('✅ Final ML Prediction:', mlPrediction);
+    setPrediction(mlPrediction);
+    
+  } catch (err) {
+    console.error('❌ ML error:', err);
+    setPrediction({
+      winProbability: { teamA: 50, teamB: 50 },
+      predictedScore: 0,
+      keyFactors: ["⚠️ ML model unavailable"],
+      momentum: "neutral",
+      confidence: "low",
+      reasoning: "Unable to connect to ML service"
+    });
+  } finally {
+    setPredictionLoading(false);
+  }
+};
 
   const getTeamScore = (teamId, matchData) => {
     const currentInnings = matchData.innings[matchData.currentInnings - 1];
@@ -392,7 +529,6 @@ export default function LiveMatchView() {
       borderRadius: '12px',
       border: '2px solid rgba(220, 38, 38, 0.3)',
     },
-    // FIXED: Combined Card for Last 6 Balls + Commentary
     ballsAndCommentaryCard: {
       background: 'rgba(255,255,255,0.98)',
       backdropFilter: 'blur(20px)',
@@ -523,8 +659,7 @@ export default function LiveMatchView() {
       color: 'white',
       padding: '0.75rem 1.5rem',
       borderRadius: '9999px',
-      boxShadow: '0 4px 20px rgba(16, 185, 129, 0.4)',
-      display: 'flex',
+      boxShadow: '0 4px 20px rgba(16, 185, 129, 0.4)',display: 'flex',
       alignItems: 'center',
       gap: '0.75rem',
       zIndex: 1000,
@@ -563,7 +698,6 @@ export default function LiveMatchView() {
                 from { transform: rotate(0deg); }
                 to { transform: rotate(360deg); }
               }
-              /* Custom Scrollbar for Commentary */
               .commentary-scroll::-webkit-scrollbar {
                 width: 6px;
               }
@@ -692,7 +826,6 @@ export default function LiveMatchView() {
             background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
             border-left-width: 4px;
           }
-          /* Custom Scrollbar */
           .commentary-scroll::-webkit-scrollbar {
             width: 6px;
           }
@@ -863,9 +996,8 @@ export default function LiveMatchView() {
                 </div>
               )}
 
-              {/* FIXED: Combined Last 6 Balls + Commentary in ONE Card */}
+              {/* Combined Last 6 Balls + Commentary */}
               <div style={styles.ballsAndCommentaryCard} className="card">
-                {/* Last 6 Balls Section */}
                 <h3 style={styles.cardTitle}>
                   <Zap color="#ca8a04" size={26} />
                   Last 6 Balls
@@ -895,10 +1027,8 @@ export default function LiveMatchView() {
                   </div>
                 )}
 
-                {/* Divider */}
                 <div style={styles.commentaryDivider}></div>
 
-                {/* Ball-by-Ball Commentary Section */}
                 <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem'}}>
                   <Clock color="#059669" size={24} />
                   <h4 style={{margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: '#1f2937'}}>
@@ -1089,7 +1219,7 @@ export default function LiveMatchView() {
                     </div>
 
                     <div style={{fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.25)', fontWeight: '600'}}>
-                      🤖 Powered by Rule-Based AI • Auto-updating
+                      🤖 Powered by ML Model (IPL 2008-2024 Data) • Auto-updating
                     </div>
                   </div>
                 )}
