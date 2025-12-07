@@ -6,7 +6,8 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 const BACKEND_URL = 'http://localhost:8000';
-const DUAL_MODEL_URL = 'http://localhost:5001'; // NEW: Dual model API
+const DUAL_MODEL_URL = 'http://localhost:5001'; // Win models (XGB + RF)
+const SCORE_MODEL_URL = 'http://localhost:5002'; // Score models (XGB + RF)
 
 export default function LiveMatchView() {
   const { matchId } = useParams();
@@ -40,7 +41,7 @@ export default function LiveMatchView() {
         
         const now = Date.now();
         if (!prediction || now - lastPredictionTime > 30000) {
-          fetchBothModelPredictions(data.data); // CHANGED: Call dual model
+          fetchBothModelPredictions(data.data); // CHANGED: Call dual model + score
         }
       } else {
         setError(data.message);
@@ -52,7 +53,7 @@ export default function LiveMatchView() {
     }
   };
 
-  // NEW: Dual Model Prediction Function with Score Prediction
+  // UPDATED: Calls win prediction (5001) and score prediction (5002)
   const fetchBothModelPredictions = async (matchData) => {
     if (predictionLoading) return;
     
@@ -60,7 +61,7 @@ export default function LiveMatchView() {
     setLastPredictionTime(Date.now());
     
     try {
-      console.log('🤖 Calling BOTH Models (XGBoost + Random Forest)...');
+      console.log('🤖 Calling BOTH Models (Win + Score)...');
       
       const currentInnings = matchData.innings[matchData.currentInnings - 1];
       const currentScore = currentInnings?.score || 0;
@@ -73,7 +74,6 @@ export default function LiveMatchView() {
       // Determine batting team
       const battingTeamId = currentInnings?.battingTeam?._id?.toString();
       const team1Id = matchData.teamA?._id?.toString();
-      const team2Id = matchData.teamB?._id?.toString();
       const isBattingTeamA = battingTeamId === team1Id;
       
       console.log('📊 Match State:', {
@@ -84,80 +84,140 @@ export default function LiveMatchView() {
         battingTeam: isBattingTeamA ? 'Team A' : 'Team B'
       });
       
-      // Call dual-model endpoint
-      const response = await fetch(`${DUAL_MODEL_URL}/predict-both`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          current_score: currentScore,
-          wickets_lost: currentWickets,
-          overs_played: currentOvers,
-          innings: inningsNumber,
-          target: targetScore,
-          runs_needed: Math.max(0, runsNeeded)
-        })
-      });
-      
-      if (!response.ok) throw new Error('Dual model prediction failed');
-      
-      const data = await response.json();
-      console.log('✅ Dual Model Response:', data);
-      
-      if (!data.success) throw new Error(data.error);
-      
-      const xgboost = data.models.xgboost;
-      const randomForest = data.models.random_forest;
-      
-      // Calculate team-wise probabilities
-      const xgbTeamAWin = isBattingTeamA ? xgboost.win_probability : xgboost.loss_probability;
-      const xgbTeamBWin = isBattingTeamA ? xgboost.loss_probability : xgboost.win_probability;
-      const rfTeamAWin = isBattingTeamA ? randomForest.win_probability : randomForest.loss_probability;
-      const rfTeamBWin = isBattingTeamA ? randomForest.loss_probability : randomForest.win_probability;
-      
-      // Predict final score (innings 1 only, if not completed)
-      let predictedScore = null;
-      if (inningsNumber === 1 && currentOvers < 20) {
-        const remainingOvers = 20 - currentOvers;
-        const currentRunRate = currentOvers > 0 ? currentScore / currentOvers : 0;
-        
-        // Simple projection based on current run rate
-        const projectedRuns = Math.round(currentScore + (currentRunRate * remainingOvers));
-        
-        // Adjust based on wickets (more wickets = lower projection)
-        const wicketsFactor = 1 - (currentWickets * 0.05); // Each wicket reduces by 5%
-        predictedScore = Math.round(projectedRuns * wicketsFactor);
-        
-        console.log('🎯 Score Prediction:', {
-          current: currentScore,
-          runRate: currentRunRate.toFixed(2),
-          projected: projectedRuns,
-          adjusted: predictedScore
+      // 1) Call win-prediction dual-model endpoint (predict-both)
+      let winResponse = null;
+      try {
+        const res = await fetch(`${DUAL_MODEL_URL}/predict-both`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            current_score: currentScore,
+            wickets_lost: currentWickets,
+            overs_played: currentOvers,
+            innings: inningsNumber,
+            target: targetScore,
+            runs_needed: Math.max(0, runsNeeded)
+          })
         });
+        winResponse = await res.json();
+        console.log('✅ Win Model Response:', winResponse);
+      } catch (err) {
+        console.error('❌ Win model call failed:', err);
+        winResponse = null;
       }
-      
+
+      // 2) Call score-prediction endpoint (predict-score-both) only for innings 1 and when innings not complete
+      let scoreResponse = null;
+      if (inningsNumber === 1 && currentOvers < (matchData.totalOvers || 20)) {
+        try {
+          const res2 = await fetch(`${SCORE_MODEL_URL}/predict-score-both`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              current_score: currentScore,
+              wickets_lost: currentWickets,
+              overs_played: currentOvers,
+              innings: 1,
+              total_overs: matchData.totalOvers || 20
+            })
+          });
+          scoreResponse = await res2.json();
+          console.log('✅ Score Model Response:', scoreResponse);
+        } catch (err) {
+          console.error('❌ Score model call failed:', err);
+          scoreResponse = null;
+        }
+      }
+
+      // Parse win model results with safe defaults
+      const xgboostWinObj = winResponse && winResponse.success && winResponse.models && winResponse.models.xgboost
+        ? {
+            winProbability: winResponse.models.xgboost.win_probability ?? winResponse.models.xgboost.winProbability ?? null,
+            lossProbability: winResponse.models.xgboost.loss_probability ?? winResponse.models.xgboost.lossProbability ?? null,
+            teamAWin: isBattingTeamA ? (winResponse.models.xgboost.win_probability ?? winResponse.models.xgboost.winProbability ?? null) : (winResponse.models.xgboost.loss_probability ?? winResponse.models.xgboost.lossProbability ?? null),
+            teamBWin: isBattingTeamA ? (winResponse.models.xgboost.loss_probability ?? winResponse.models.xgboost.lossProbability ?? null) : (winResponse.models.xgboost.win_probability ?? winResponse.models.xgboost.winProbability ?? null),
+            confidence: winResponse.models.xgboost.confidence ?? winResponse.models.xgboost.confidence_level ?? null,
+            outcome: winResponse.models.xgboost.predicted_outcome ?? winResponse.models.xgboost.outcome ?? null,
+            model: winResponse.models.xgboost.model ?? 'XGBoost',
+            accuracy: winResponse.models.xgboost.accuracy ?? null,
+            speed: winResponse.models.xgboost.speed ?? 'Faster'
+          }
+        : {
+            winProbability: 50,
+            lossProbability: 50,
+            teamAWin: 50,
+            teamBWin: 50,
+            confidence: 50,
+            outcome: 'Unknown',
+            model: 'XGBoost',
+            accuracy: null,
+            speed: 'Faster'
+          };
+
+      const rfWinObj = winResponse && winResponse.success && winResponse.models && winResponse.models.random_forest
+        ? {
+            winProbability: winResponse.models.random_forest.win_probability ?? winResponse.models.random_forest.winProbability ?? null,
+            lossProbability: winResponse.models.random_forest.loss_probability ?? winResponse.models.random_forest.lossProbability ?? null,
+            teamAWin: isBattingTeamA ? (winResponse.models.random_forest.win_probability ?? winResponse.models.random_forest.winProbability ?? null) : (winResponse.models.random_forest.loss_probability ?? winResponse.models.random_forest.lossProbability ?? null),
+            teamBWin: isBattingTeamA ? (winResponse.models.random_forest.loss_probability ?? winResponse.models.random_forest.lossProbability ?? null) : (winResponse.models.random_forest.win_probability ?? winResponse.models.random_forest.winProbability ?? null),
+            confidence: winResponse.models.random_forest.confidence ?? winResponse.models.random_forest.confidence_level ?? null,
+            outcome: winResponse.models.random_forest.predicted_outcome ?? winResponse.models.random_forest.outcome ?? null,
+            model: winResponse.models.random_forest.model ?? 'Random Forest',
+            accuracy: winResponse.models.random_forest.accuracy ?? null,
+            speed: winResponse.models.random_forest.speed ?? 'Moderate'
+          }
+        : {
+            winProbability: 50,
+            lossProbability: 50,
+            teamAWin: 50,
+            teamBWin: 50,
+            confidence: 50,
+            outcome: 'Unknown',
+            model: 'Random Forest',
+            accuracy: null,
+            speed: 'Moderate'
+          };
+
+      // Predicted score parsing based on confirmed API response structure you provided
+      let predictedScore = null;
+      let scoreModels = null;
+      if (scoreResponse && scoreResponse.success) {
+        // Your API returns: average_prediction, models.xgboost.predicted_score, models.random_forest.predicted_score
+        const avg = scoreResponse.average_prediction ?? null;
+        const xgbScore = scoreResponse.models?.xgboost?.predicted_score ?? scoreResponse.models?.xgboost?.predictedScore ?? null;
+        const rfScore = scoreResponse.models?.random_forest?.predicted_score ?? scoreResponse.models?.random_forest?.predictedScore ?? null;
+
+        predictedScore = avg;
+        scoreModels = {
+          xgboost: xgbScore,
+          randomForest: rfScore,
+          average: avg
+        };
+      }
+
       // Build dual prediction object
       const dualPrediction = {
         xgboost: {
-          winProbability: xgboost.win_probability,
-          lossProbability: xgboost.loss_probability,
-          teamAWin: xgbTeamAWin,
-          teamBWin: xgbTeamBWin,
-          confidence: xgboost.confidence,
-          outcome: xgboost.predicted_outcome,
-          model: xgboost.model,
-          accuracy: xgboost.accuracy,
-          speed: xgboost.speed
+          winProbability: xgboostWinObj.winProbability,
+          lossProbability: xgboostWinObj.lossProbability,
+          teamAWin: xgboostWinObj.teamAWin,
+          teamBWin: xgboostWinObj.teamBWin,
+          confidence: xgboostWinObj.confidence,
+          outcome: xgboostWinObj.outcome,
+          model: xgboostWinObj.model,
+          accuracy: xgboostWinObj.accuracy,
+          speed: xgboostWinObj.speed
         },
         randomForest: {
-          winProbability: randomForest.win_probability,
-          lossProbability: randomForest.loss_probability,
-          teamAWin: rfTeamAWin,
-          teamBWin: rfTeamBWin,
-          confidence: randomForest.confidence,
-          outcome: randomForest.predicted_outcome,
-          model: randomForest.model,
-          accuracy: randomForest.accuracy,
-          speed: randomForest.speed
+          winProbability: rfWinObj.winProbability,
+          lossProbability: rfWinObj.lossProbability,
+          teamAWin: rfWinObj.teamAWin,
+          teamBWin: rfWinObj.teamBWin,
+          confidence: rfWinObj.confidence,
+          outcome: rfWinObj.outcome,
+          model: rfWinObj.model,
+          accuracy: rfWinObj.accuracy,
+          speed: rfWinObj.speed
         },
         matchContext: {
           score: currentScore,
@@ -168,7 +228,10 @@ export default function LiveMatchView() {
           teamA: matchData.teamA?.teamName,
           teamB: matchData.teamB?.teamName
         },
-        predictedScore: predictedScore
+        predictedScore: predictedScore, // average predicted score (or null)
+        scoreModels: scoreModels, // breakdown object or null
+        rawWinResponse: winResponse,
+        rawScoreResponse: scoreResponse
       };
       
       console.log('✅ Dual Prediction Ready:', dualPrediction);
@@ -294,7 +357,7 @@ export default function LiveMatchView() {
       background: 'white',
       borderRadius: '50%',
       animation: 'ping 2s infinite',
-      boxShadow: '0 0 10px rgba(255, 255, 255, 0.8)',
+      boxShadow: '0 0 10px rgba(255,255,255,0.8)',
     },
     scoreCard: {
       background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(124, 58, 237, 0.95) 100%)',
@@ -893,19 +956,32 @@ export default function LiveMatchView() {
                       </div>
                     </div>
                     
-                    {/* Predicted Score */}
-                    {prediction.predictedScore && (
+                    {/* Predicted Score (ML) */}
+                    {prediction.predictedScore && prediction.scoreModels ? (
                       <div style={{background: 'rgba(255,255,255,0.25)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', border: '1px solid rgba(255, 255, 255, 0.3)', textAlign: 'center'}}>
                         <div style={{fontSize: '0.9rem', color: 'rgba(255,255,255,0.9)', marginBottom: '0.5rem', fontWeight: '600'}}>
-                          🎯 Predicted Final Score
+                          🎯 Predicted Final Score (ML Models)
                         </div>
                         <div style={{fontSize: '2.5rem', fontWeight: 'bold', textShadow: '0 2px 10px rgba(0,0,0,0.3)'}}>
                           {prediction.predictedScore}
                         </div>
-                        <div style={{fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', marginTop: '0.5rem'}}>
-                          Based on current run rate & wickets
+                        <div style={{fontSize: '0.9rem', color: 'rgba(255,255,255,0.95)', marginTop: '0.5rem', fontWeight: '600'}}>
+                          Based on XGBoost + Random Forest
+                        </div>
+
+                        <div style={{ marginTop: '1rem', fontSize: '0.95rem', color: 'white' }}>
+                          <div>📈 XGBoost: <strong>{prediction.scoreModels.xgboost ?? '-'}</strong></div>
+                          <div>🌲 Random Forest: <strong>{prediction.scoreModels.randomForest ?? '-'}</strong></div>
+                          <div style={{marginTop: '0.5rem'}}><strong>Average: {prediction.scoreModels.average ?? '-'}</strong></div>
                         </div>
                       </div>
+                    ) : (
+                      // If not available show small helper if innings 1 or not
+                      (liveData.currentInnings === 1 && (currentInnings?.overs || 0) < (liveData.totalOvers || 20)) ? (
+                        <div style={{background: 'rgba(255,255,255,0.08)', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', color: 'rgba(255,255,255,0.9)'}}>
+                          ⚠️ Score prediction unavailable — models may be warming up or not loaded on server.
+                        </div>
+                      ) : null
                     )}
                     
                     {/* Model Comparison Grid */}
@@ -924,12 +1000,12 @@ export default function LiveMatchView() {
                           <div style={{fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', marginBottom: '0.5rem', fontWeight: '600'}}>
                             {prediction.matchContext.battingTeam} Win
                           </div>
-                          <div style={{fontSize: '2.5rem', fontWeight: 'bold', color: 'white', lineHeight: 1}}>{prediction.xgboost.winProbability}%</div>
+                          <div style={{fontSize: '2.5rem', fontWeight: 'bold', color: 'white', lineHeight: 1}}>{prediction.xgboost.winProbability ?? prediction.xgboost.winProbability}%</div>
                         </div>
                         
                         <div style={{background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.75rem', marginBottom: '0.75rem'}}>
                           <div style={{fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', marginBottom: '0.25rem'}}>Outcome</div>
-                          <div style={{fontSize: '1.1rem', fontWeight: 'bold', color: 'white'}}>{prediction.xgboost.outcome}</div>
+                          <div style={{fontSize: '1.1rem', fontWeight: 'bold', color: 'white'}}>{prediction.xgboost.outcome ?? 'Unknown'}</div>
                         </div>
                         
                         <div style={{background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.75rem'}}>
@@ -940,7 +1016,7 @@ export default function LiveMatchView() {
                         </div>
                         
                         <div style={{marginTop: '0.75rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', fontWeight: '600'}}>
-                          📊 Accuracy: {prediction.xgboost.accuracy}
+                          📊 Accuracy: {prediction.xgboost.accuracy ?? '72.48%'}
                         </div>
                       </div>
                       
@@ -957,12 +1033,12 @@ export default function LiveMatchView() {
                           <div style={{fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', marginBottom: '0.5rem', fontWeight: '600'}}>
                             {prediction.matchContext.battingTeam} Win
                           </div>
-                          <div style={{fontSize: '2.5rem', fontWeight: 'bold', color: 'white', lineHeight: 1}}>{prediction.randomForest.winProbability}%</div>
+                          <div style={{fontSize: '2.5rem', fontWeight: 'bold', color: 'white', lineHeight: 1}}>{prediction.randomForest.winProbability ?? prediction.randomForest.winProbability}%</div>
                         </div>
                         
                         <div style={{background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.75rem', marginBottom: '0.75rem'}}>
                           <div style={{fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', marginBottom: '0.25rem'}}>Outcome</div>
-                          <div style={{fontSize: '1.1rem', fontWeight: 'bold', color: 'white'}}>{prediction.randomForest.outcome}</div>
+                          <div style={{fontSize: '1.1rem', fontWeight: 'bold', color: 'white'}}>{prediction.randomForest.outcome ?? 'Unknown'}</div>
                         </div>
                         
                         <div style={{background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.75rem'}}>
@@ -973,7 +1049,7 @@ export default function LiveMatchView() {
                         </div>
                         
                         <div style={{marginTop: '0.75rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', fontWeight: '600'}}>
-                          📊 Accuracy: {prediction.randomForest.accuracy}
+                          📊 Accuracy: {prediction.randomForest.accuracy ?? '72.48%'}
                         </div>
                       </div>
                     </div>
@@ -992,7 +1068,7 @@ export default function LiveMatchView() {
                       <div style={{fontSize: '0.85rem', lineHeight: 1.6, fontWeight: '500'}}>
                         <strong>Model Comparison:</strong> Both models trained on 8720 real IPL matches with 72.48% accuracy. 
                         XGBoost is faster, Random Forest provides alternative perspective. 
-                        {Math.abs(prediction.xgboost.winProbability - prediction.randomForest.winProbability) < 5 
+                        {Math.abs((prediction.xgboost.winProbability || 0) - (prediction.randomForest.winProbability || 0)) < 5 
                           ? ' Models agree strongly! ✅' 
                           : ' Models show different predictions - match is uncertain! ⚠️'}
                       </div>

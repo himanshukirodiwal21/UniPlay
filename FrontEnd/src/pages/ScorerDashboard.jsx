@@ -25,6 +25,44 @@ const BACKEND_URL = "http://localhost:8000";
 let socket = null;
 
 // ✅ Helper functions are defined OUTSIDE the component
+// ✅ Format overs in cricket format (X.Y where Y is 0-5)
+const formatOvers = (overs) => {
+  if (overs === 0 || overs === undefined || overs === null) return '0.0';
+  
+  const wholeOvers = Math.floor(overs);
+  const balls = Math.round((overs - wholeOvers) * 6);
+  
+  // If balls >= 6, it's a complete over
+  if (balls >= 6) {
+    return `${wholeOvers + 1}.0`;
+  }
+  
+  return `${wholeOvers}.${balls}`;
+};
+
+// ✅ Calculate overs left properly
+const calculateOversLeft = (totalOvers, currentOvers) => {
+  if (!currentOvers || currentOvers === 0) return totalOvers;
+  
+  const currentWholeOvers = Math.floor(currentOvers);
+  const currentBalls = Math.round((currentOvers - currentWholeOvers) * 6);
+  
+  // Total balls
+  const totalBalls = totalOvers * 6;
+  const playedBalls = (currentWholeOvers * 6) + currentBalls;
+  const remainingBalls = totalBalls - playedBalls;
+  
+  // Convert back to overs
+  const remainingOvers = Math.floor(remainingBalls / 6);
+  const remainingBallsInOver = remainingBalls % 6;
+  
+  if (remainingBallsInOver === 0) {
+    return `${remainingOvers}.0`;
+  }
+  
+  return `${remainingOvers}.${remainingBallsInOver}`;
+};
+
 const getStatusBadge = (status) => {
   const badges = {
     InProgress: {
@@ -844,6 +882,7 @@ const ScoringInterface = ({
               : `Wickets Remaining: ${10 - currentInnings.wickets}/10`}
           </div>
         </div>
+
 
         {/* ✅ Only show manual controls if NOT in auto-play mode OR auto-play is not playing */}
         {(!autoPlayMode || !autoPlayStatus.isPlaying) && (
