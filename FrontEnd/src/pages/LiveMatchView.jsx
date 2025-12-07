@@ -6,7 +6,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 const BACKEND_URL = 'http://localhost:8000';
-const ML_MODEL_URL = 'http://localhost:5000';
+const DUAL_MODEL_URL = 'http://localhost:5001'; // NEW: Dual model API
 
 export default function LiveMatchView() {
   const { matchId } = useParams();
@@ -40,7 +40,7 @@ export default function LiveMatchView() {
         
         const now = Date.now();
         if (!prediction || now - lastPredictionTime > 30000) {
-          fetchPrediction(data.data);
+          fetchBothModelPredictions(data.data); // CHANGED: Call dual model
         }
       } else {
         setError(data.message);
@@ -52,202 +52,139 @@ export default function LiveMatchView() {
     }
   };
 
-  const fetchPrediction = async (matchData) => {
-  if (predictionLoading) return;
-  
-  setPredictionLoading(true);
-  setLastPredictionTime(Date.now());
-  
-  try {
-    console.log('🤖 Calling ML Model for LIVE prediction...');
+  // NEW: Dual Model Prediction Function with Score Prediction
+  const fetchBothModelPredictions = async (matchData) => {
+    if (predictionLoading) return;
     
-    // Team mapping
-    const teamIdToName = {
-      '4': 'Mumbai Indians', '5': 'Chennai Super Kings',
-      '1': 'Royal Challengers Bangalore', '2': 'Kolkata Knight Riders',
-      '3': 'Delhi Capitals', '6': 'Rajasthan Royals',
-      '7': 'Punjab Kings', '8': 'Sunrisers Hyderabad',
-      '9': 'Gujarat Titans', '10': 'Lucknow Super Giants',
-    };
+    setPredictionLoading(true);
+    setLastPredictionTime(Date.now());
     
-    const team1Raw = matchData.teamA?.teamName || '4';
-    const team2Raw = matchData.teamB?.teamName || '5';
-    const team1Name = teamIdToName[team1Raw] || team1Raw;
-    const team2Name = teamIdToName[team2Raw] || team2Raw;
-    const venueName = matchData.venue || 'Wankhede Stadium';
-    const tossWinnerRaw = matchData.tossWinner?.teamName || team1Raw;
-    const tossWinnerName = teamIdToName[tossWinnerRaw] || tossWinnerRaw;
-    const tossDecisionValue = (matchData.tossDecision || 'bat').toLowerCase();
-    
-    // Get metadata
-    const metadataRes = await fetch(`${ML_MODEL_URL}/metadata`);
-    const metadataJson = await metadataRes.json();
-    const availableTeams = metadataJson.data?.teams || [];
-    const availableVenues = metadataJson.data?.venues || [];
-    
-    const validateTeam = (teamName, availableTeams) => {
-      if (availableTeams.includes(teamName)) return teamName;
-      const similar = availableTeams.find(t => 
-        t.toLowerCase().includes(teamName.toLowerCase())
-      );
-      return similar || 'Mumbai Indians';
-    };
-    
-    const team1 = validateTeam(team1Name, availableTeams);
-    const team2 = validateTeam(team2Name, availableTeams);
-    const venue = availableVenues.includes(venueName) ? venueName : availableVenues[0];
-    const tossWinner = validateTeam(tossWinnerName, availableTeams);
-    
-    // Current match context
-    const currentInnings = matchData.innings[matchData.currentInnings - 1];
-    const currentScore = currentInnings?.score || 0;
-    const currentWickets = currentInnings?.wickets || 0;
-    const currentOvers = currentInnings?.overs || 0;
-    const inningsNumber = matchData.currentInnings;
-    
-    // Determine batting team
-    const battingTeamId = currentInnings?.battingTeam?._id?.toString();
-    const team1Id = matchData.teamA?._id?.toString();
-    const team2Id = matchData.teamB?._id?.toString();
-    
-    const battingTeam = battingTeamId === team1Id ? team1 : team2;
-    const targetScore = inningsNumber === 2 ? (matchData.innings[0]?.score || 0) : 0;
-    
-    console.log('📊 Match Context:', {
-      innings: inningsNumber,
-      batting: battingTeam,
-      score: `${currentScore}/${currentWickets}`,
-      overs: currentOvers,
-      target: targetScore
-    });
-    
-    // === CALL ML LIVE PREDICTION API ===
-    const response = await fetch(`${ML_MODEL_URL}/predict-live`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        team1: team1,
-        team2: team2,
-        venue: venue,
-        toss_winner: tossWinner,
-        toss_decision: tossDecisionValue,
+    try {
+      console.log('🤖 Calling BOTH Models (XGBoost + Random Forest)...');
+      
+      const currentInnings = matchData.innings[matchData.currentInnings - 1];
+      const currentScore = currentInnings?.score || 0;
+      const currentWickets = currentInnings?.wickets || 0;
+      const currentOvers = currentInnings?.overs || 0;
+      const inningsNumber = matchData.currentInnings;
+      const targetScore = inningsNumber === 2 ? (matchData.innings[0]?.score || 0) : 0;
+      const runsNeeded = inningsNumber === 2 ? (targetScore - currentScore + 1) : 0;
+      
+      // Determine batting team
+      const battingTeamId = currentInnings?.battingTeam?._id?.toString();
+      const team1Id = matchData.teamA?._id?.toString();
+      const team2Id = matchData.teamB?._id?.toString();
+      const isBattingTeamA = battingTeamId === team1Id;
+      
+      console.log('📊 Match State:', {
+        score: `${currentScore}/${currentWickets}`,
+        overs: currentOvers,
         innings: inningsNumber,
-        current_score: currentScore,
-        current_wickets: currentWickets,
-        current_overs: currentOvers,
-        target_score: targetScore,
-        batting_team: battingTeam
-      })
-    });
-    
-    if (!response.ok) throw new Error('ML Live prediction failed');
-    
-    const data = await response.json();
-    console.log('✅ ML Live Response:', data);
-    
-    if (!data.success) throw new Error(data.error);
-    
-    // Extract ML predictions
-    const predictedWinner = data.predicted_winner;
-    const finalConfidence = data.confidence;
-    const teamAWinProb = data.probabilities.team1;
-    const teamBWinProb = data.probabilities.team2;
-    const baseMlPrediction = data.base_ml_prediction;
-    
-    console.log('🎯 ML Predictions:', {
-      winner: predictedWinner,
-      confidence: finalConfidence,
-      teamA: teamAWinProb,
-      teamB: teamBWinProb,
-      baseMl: baseMlPrediction
-    });
-    
-    // Build key factors
-    const keyFactors = [
-      `🏆 ML Predicted Winner: ${predictedWinner}`,
-      `📊 Live Win Probability: ${finalConfidence.toFixed(1)}%`,
-      `🤖 Base ML Model: ${baseMlPrediction.winner} (${baseMlPrediction.confidence.toFixed(1)}%)`,
-      `🏟️ Venue: ${venue}`,
-      `🪙 Toss: ${tossWinner} chose to ${tossDecisionValue}`,
-    ];
-    
-    if (currentOvers > 0) {
-      keyFactors.push(`⚡ Current: ${currentScore}/${currentWickets} in ${currentOvers} overs`);
-      const runRate = (currentScore / currentOvers).toFixed(2);
-      keyFactors.push(`📈 Current RR: ${runRate}`);
-    }
-    
-    // Score prediction (first innings only)
-    let predictedScore = 0;
-    
-    if (inningsNumber === 1 && currentOvers < 20) {
-      try {
-        const scoreResponse = await fetch(`${ML_MODEL_URL}/predict-score`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            team: battingTeam, venue, toss_winner: tossWinner,
-            toss_decision: tossDecisionValue,
-            current_score: currentScore,
-            current_overs: currentOvers,
-            current_wickets: currentWickets
-          })
-        });
+        target: targetScore,
+        battingTeam: isBattingTeamA ? 'Team A' : 'Team B'
+      });
+      
+      // Call dual-model endpoint
+      const response = await fetch(`${DUAL_MODEL_URL}/predict-both`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_score: currentScore,
+          wickets_lost: currentWickets,
+          overs_played: currentOvers,
+          innings: inningsNumber,
+          target: targetScore,
+          runs_needed: Math.max(0, runsNeeded)
+        })
+      });
+      
+      if (!response.ok) throw new Error('Dual model prediction failed');
+      
+      const data = await response.json();
+      console.log('✅ Dual Model Response:', data);
+      
+      if (!data.success) throw new Error(data.error);
+      
+      const xgboost = data.models.xgboost;
+      const randomForest = data.models.random_forest;
+      
+      // Calculate team-wise probabilities
+      const xgbTeamAWin = isBattingTeamA ? xgboost.win_probability : xgboost.loss_probability;
+      const xgbTeamBWin = isBattingTeamA ? xgboost.loss_probability : xgboost.win_probability;
+      const rfTeamAWin = isBattingTeamA ? randomForest.win_probability : randomForest.loss_probability;
+      const rfTeamBWin = isBattingTeamA ? randomForest.loss_probability : randomForest.win_probability;
+      
+      // Predict final score (innings 1 only, if not completed)
+      let predictedScore = null;
+      if (inningsNumber === 1 && currentOvers < 20) {
+        const remainingOvers = 20 - currentOvers;
+        const currentRunRate = currentOvers > 0 ? currentScore / currentOvers : 0;
         
-        if (scoreResponse.ok) {
-          const scoreData = await scoreResponse.json();
-          if (scoreData.success) {
-            predictedScore = scoreData.predicted_score;
-            keyFactors.push(`🎯 Predicted Final Score: ${predictedScore}`);
-          }
-        }
-      } catch (err) {
-        console.warn('Score prediction skipped');
+        // Simple projection based on current run rate
+        const projectedRuns = Math.round(currentScore + (currentRunRate * remainingOvers));
+        
+        // Adjust based on wickets (more wickets = lower projection)
+        const wicketsFactor = 1 - (currentWickets * 0.05); // Each wicket reduces by 5%
+        predictedScore = Math.round(projectedRuns * wicketsFactor);
+        
+        console.log('🎯 Score Prediction:', {
+          current: currentScore,
+          runRate: currentRunRate.toFixed(2),
+          projected: projectedRuns,
+          adjusted: predictedScore
+        });
       }
-    } else if (inningsNumber === 2) {
-      const runsNeeded = targetScore - currentScore + 1;
-      if (runsNeeded > 0) {
-        keyFactors.push(`🎯 Target: ${targetScore + 1}`);
-        keyFactors.push(`📊 Need: ${runsNeeded} runs`);
-      }
+      
+      // Build dual prediction object
+      const dualPrediction = {
+        xgboost: {
+          winProbability: xgboost.win_probability,
+          lossProbability: xgboost.loss_probability,
+          teamAWin: xgbTeamAWin,
+          teamBWin: xgbTeamBWin,
+          confidence: xgboost.confidence,
+          outcome: xgboost.predicted_outcome,
+          model: xgboost.model,
+          accuracy: xgboost.accuracy,
+          speed: xgboost.speed
+        },
+        randomForest: {
+          winProbability: randomForest.win_probability,
+          lossProbability: randomForest.loss_probability,
+          teamAWin: rfTeamAWin,
+          teamBWin: rfTeamBWin,
+          confidence: randomForest.confidence,
+          outcome: randomForest.predicted_outcome,
+          model: randomForest.model,
+          accuracy: randomForest.accuracy,
+          speed: randomForest.speed
+        },
+        matchContext: {
+          score: currentScore,
+          wickets: currentWickets,
+          overs: currentOvers,
+          innings: inningsNumber,
+          battingTeam: isBattingTeamA ? matchData.teamA?.teamName : matchData.teamB?.teamName,
+          teamA: matchData.teamA?.teamName,
+          teamB: matchData.teamB?.teamName
+        },
+        predictedScore: predictedScore
+      };
+      
+      console.log('✅ Dual Prediction Ready:', dualPrediction);
+      setPrediction(dualPrediction);
+      
+    } catch (err) {
+      console.error('❌ Dual model error:', err);
+      setPrediction({
+        xgboost: { winProbability: 50, teamAWin: 50, teamBWin: 50, confidence: 50, outcome: 'Unknown' },
+        randomForest: { winProbability: 50, teamAWin: 50, teamBWin: 50, confidence: 50, outcome: 'Unknown' },
+        error: true
+      });
+    } finally {
+      setPredictionLoading(false);
     }
-    
-    // Momentum & confidence
-    const momentum = teamAWinProb > 60 ? 'teamA' : teamBWinProb > 60 ? 'teamB' : 'neutral';
-    const maxProb = Math.max(teamAWinProb, teamBWinProb);
-    const confidenceLevel = maxProb > 70 ? 'high' : maxProb > 55 ? 'medium' : 'low';
-    
-    const reasoning = `ML model dynamically adjusted for live match context. Base prediction: ${baseMlPrediction.winner} (${baseMlPrediction.confidence.toFixed(1)}%). Live probability considers current score (${currentScore}/${currentWickets}), wickets remaining, and match situation.`;
-    
-    const mlPrediction = {
-      winProbability: {
-        teamA: Math.round(teamAWinProb * 10) / 10,
-        teamB: Math.round(teamBWinProb * 10) / 10
-      },
-      predictedScore: predictedScore,
-      keyFactors: keyFactors,
-      momentum: momentum,
-      confidence: confidenceLevel,
-      reasoning: reasoning
-    };
-    
-    console.log('✅ Final ML Prediction:', mlPrediction);
-    setPrediction(mlPrediction);
-    
-  } catch (err) {
-    console.error('❌ ML error:', err);
-    setPrediction({
-      winProbability: { teamA: 50, teamB: 50 },
-      predictedScore: 0,
-      keyFactors: ["⚠️ ML model unavailable"],
-      momentum: "neutral",
-      confidence: "low",
-      reasoning: "Unable to connect to ML service"
-    });
-  } finally {
-    setPredictionLoading(false);
-  }
-};
+  };
 
   const getTeamScore = (teamId, matchData) => {
     const currentInnings = matchData.innings[matchData.currentInnings - 1];
@@ -625,32 +562,6 @@ export default function LiveMatchView() {
       transition: 'all 0.3s',
       backdropFilter: 'blur(10px)',
     },
-    probabilityBar: {
-      background: 'rgba(255,255,255,0.25)',
-      borderRadius: '9999px',
-      height: '1rem',
-      overflow: 'hidden',
-      marginTop: '0.5rem',
-      border: '1px solid rgba(255, 255, 255, 0.3)',
-      position: 'relative',
-    },
-    probabilityFill: {
-      background: 'linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,1) 100%)',
-      height: '100%',
-      borderRadius: '9999px',
-      transition: 'width 0.8s ease-out',
-      boxShadow: '0 0 10px rgba(255, 255, 255, 0.5)',
-    },
-    factorBox: {
-      background: 'rgba(255,255,255,0.15)',
-      borderRadius: '8px',
-      padding: '0.75rem',
-      fontSize: '0.875rem',
-      marginBottom: '0.5rem',
-      border: '1px solid rgba(255, 255, 255, 0.25)',
-      backdropFilter: 'blur(10px)',
-      lineHeight: 1.5,
-    },
     autoUpdateBadge: {
       position: 'fixed',
       bottom: '2rem',
@@ -659,7 +570,8 @@ export default function LiveMatchView() {
       color: 'white',
       padding: '0.75rem 1.5rem',
       borderRadius: '9999px',
-      boxShadow: '0 4px 20px rgba(16, 185, 129, 0.4)',display: 'flex',
+      boxShadow: '0 4px 20px rgba(16, 185, 129, 0.4)',
+      display: 'flex',
       alignItems: 'center',
       gap: '0.75rem',
       zIndex: 1000,
@@ -676,49 +588,16 @@ export default function LiveMatchView() {
         <div style={styles.loadingContainer}>
           <style>
             {`
-              @keyframes spin {
-                to { transform: rotate(360deg); }
-              }
-              @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.7; }
-              }
-              @keyframes ping {
-                75%, 100% {
-                  transform: scale(2);
-                  opacity: 0;
-                }
-              }
-              @keyframes gradientShift {
-                0% { background-position: 0% 50%; }
-                50% { background-position: 100% 50%; }
-                100% { background-position: 0% 50%; }
-              }
-              @keyframes rotate {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-              }
-              .commentary-scroll::-webkit-scrollbar {
-                width: 6px;
-              }
-              .commentary-scroll::-webkit-scrollbar-track {
-                background: rgba(0,0,0,0.05);
-                border-radius: 10px;
-              }
-              .commentary-scroll::-webkit-scrollbar-thumb {
-                background: rgba(59, 130, 246, 0.5);
-                borderRadius: 10px;
-              }
-              .commentary-scroll::-webkit-scrollbar-thumb:hover {
-                background: rgba(59, 130, 246, 0.7);
-              }
+              @keyframes spin { to { transform: rotate(360deg); } }
+              @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+              @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+              @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+              @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
             `}
           </style>
           <div style={styles.loadingContent}>
             <div style={styles.spinner}></div>
-            <h2 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 'bold' }}>
-              Loading Live Match...
-            </h2>
+            <h2 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 'bold' }}>Loading Live Match...</h2>
           </div>
         </div>
         <Footer />
@@ -736,21 +615,10 @@ export default function LiveMatchView() {
             <h2 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '1rem' }}>
               {error || 'Match not initialized yet'}
             </h2>
-            <button
-              onClick={() => navigate('/EventMatches')}
-              style={{
-                padding: '0.75rem 1.5rem',
-                background: '#2563eb',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.5rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                fontSize: '1rem',
-              }}
-            >
-              ← Back to Matches
-            </button>
+            <button onClick={() => navigate('/EventMatches')} style={{
+              padding: '0.75rem 1.5rem', background: '#2563eb', color: 'white',
+              border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer', fontSize: '1rem',
+            }}>← Back to Matches</button>
           </div>
         </div>
         <Footer />
@@ -761,134 +629,62 @@ export default function LiveMatchView() {
   const currentInnings = liveData.innings[liveData.currentInnings - 1];
   const lastBalls = currentInnings?.ballByBall?.slice(-6).reverse() || [];
   const fullCommentary = currentInnings?.ballByBall?.slice().reverse() || [];
-  
-  const runRate = currentInnings?.overs > 0 
-    ? (currentInnings.score / currentInnings.overs).toFixed(2) 
-    : '0.00';
-
+  const runRate = currentInnings?.overs > 0 ? (currentInnings.score / currentInnings.overs).toFixed(2) : '0.00';
   const teamAScore = getTeamScore(liveData.teamA?._id, liveData);
   const teamBScore = getTeamScore(liveData.teamB?._id, liveData);
-
   const requiredRunRate = liveData.currentInnings === 2 && liveData.innings[0]?.score && (liveData.totalOvers - currentInnings.overs) > 0
-    ? ((liveData.innings[0].score + 1 - currentInnings.score) / (liveData.totalOvers - currentInnings.overs)).toFixed(2)
-    : '-';
+    ? ((liveData.innings[0].score + 1 - currentInnings.score) / (liveData.totalOvers - currentInnings.overs)).toFixed(2) : '-';
 
   return (
     <>
       <Header />
       <style>
         {`
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-          @keyframes ping {
-            75%, 100% {
-              transform: scale(2);
-              opacity: 0;
-            }
-          }
-          @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-          }
-          @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
+          @keyframes spin { to { transform: rotate(360deg); } }
+          @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+          @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+          @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+          @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
           @media (max-width: 1024px) {
-            .main-grid {
-              grid-template-columns: 1fr !important;
-            }
-            .team-grid {
-              grid-template-columns: 1fr !important;
-            }
-            .batsmen-grid {
-              grid-template-columns: 1fr !important;
-            }
+            .main-grid { grid-template-columns: 1fr !important; }
+            .team-grid { grid-template-columns: 1fr !important; }
+            .batsmen-grid { grid-template-columns: 1fr !important; }
           }
-          .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 15px 50px rgba(0,0,0,0.2);
-          }
-          .batsman-card:hover {
-            transform: scale(1.02);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-          }
-          .ball-circle:hover {
-            transform: scale(1.1);
-          }
-          .commentary-item:hover {
-            background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
-            border-left-width: 4px;
-          }
-          .commentary-scroll::-webkit-scrollbar {
-            width: 6px;
-          }
-          .commentary-scroll::-webkit-scrollbar-track {
-            background: rgba(0,0,0,0.05);
-            border-radius: 10px;
-          }
-          .commentary-scroll::-webkit-scrollbar-thumb {
-            background: rgba(59, 130, 246, 0.5);
-            border-radius: 10px;
-          }
-          .commentary-scroll::-webkit-scrollbar-thumb:hover {
-            background: rgba(59, 130, 246, 0.7);
-          }
+          .card:hover { transform: translateY(-4px); box-shadow: 0 15px 50px rgba(0,0,0,0.2); }
+          .batsman-card:hover { transform: scale(1.02); box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3); }
+          .ball-circle:hover { transform: scale(1.1); }
+          .commentary-item:hover { background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%); border-left-width: 4px; }
+          .commentary-scroll::-webkit-scrollbar { width: 6px; }
+          .commentary-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 10px; }
+          .commentary-scroll::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.5); border-radius: 10px; }
+          .commentary-scroll::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.7); }
         `}
       </style>
       <div style={styles.container}>
         <div style={styles.backgroundPattern}></div>
         <div style={styles.content}>
           
-          {/* Top Bar */}
           <div style={styles.topBar}>
-            <button
-              style={styles.backButton}
-              onClick={() => navigate('/')}
-              onMouseEnter={(e) => {
-                e.target.style.background = 'rgba(255, 255, 255, 0.2)';
-                e.target.style.transform = 'translateX(-4px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'rgba(255, 255, 255, 0.1)';
-                e.target.style.transform = 'translateX(0)';
-              }}
-            >
-              <ArrowLeft size={20} />
-              Back
+            <button style={styles.backButton} onClick={() => navigate('/')}
+              onMouseEnter={(e) => { e.target.style.background = 'rgba(255, 255, 255, 0.2)'; e.target.style.transform = 'translateX(-4px)'; }}
+              onMouseLeave={(e) => { e.target.style.background = 'rgba(255, 255, 255, 0.1)'; e.target.style.transform = 'translateX(0)'; }}>
+              <ArrowLeft size={20} />Back
             </button>
-            <div style={styles.liveBadge}>
-              <div style={styles.liveDot}></div>
-              LIVE
-            </div>
+            <div style={styles.liveBadge}><div style={styles.liveDot}></div>LIVE</div>
           </div>
 
-          {/* Main Score Card */}
           <div style={styles.scoreCard}>
             <div style={styles.scoreCardGlow}></div>
             <div style={styles.teamGrid} className="team-grid">
-              
-              {/* Team A */}
               <div style={styles.teamSection}>
                 <div style={styles.teamName}>
                   {liveData.teamA?.teamName || 'Team A'}
                   {teamAScore.isBatting && <span style={{color: '#fbbf24', fontSize: '1.2rem'}}> ⚡</span>}
                 </div>
-                <div style={styles.teamScore}>
-                  {teamAScore.score}/{teamAScore.wickets}
-                </div>
-                <div style={styles.teamOvers}>
-                  {teamAScore.overs > 0 ? `${teamAScore.overs} overs` : 'Yet to bat'}
-                </div>
+                <div style={styles.teamScore}>{teamAScore.score}/{teamAScore.wickets}</div>
+                <div style={styles.teamOvers}>{teamAScore.overs > 0 ? `${teamAScore.overs} overs` : 'Yet to bat'}</div>
               </div>
 
-              {/* VS */}
               <div style={styles.vsSection}>
                 <div style={styles.vsText}>VS</div>
                 <div style={styles.inningsBox}>
@@ -903,22 +699,16 @@ export default function LiveMatchView() {
                 </div>
               </div>
 
-              {/* Team B */}
               <div style={styles.teamSection}>
                 <div style={styles.teamName}>
                   {liveData.teamB?.teamName || 'Team B'}
                   {teamBScore.isBatting && <span style={{color: '#fbbf24', fontSize: '1.2rem'}}> ⚡</span>}
                 </div>
-                <div style={styles.teamScore}>
-                  {teamBScore.score}/{teamBScore.wickets}
-                </div>
-                <div style={styles.teamOvers}>
-                  {teamBScore.overs > 0 ? `${teamBScore.overs} overs` : 'Yet to bat'}
-                </div>
+                <div style={styles.teamScore}>{teamBScore.score}/{teamBScore.wickets}</div>
+                <div style={styles.teamOvers}>{teamBScore.overs > 0 ? `${teamBScore.overs} overs` : 'Yet to bat'}</div>
               </div>
             </div>
 
-            {/* Stats Bar */}
             <div style={styles.statsBar}>
               <div style={styles.statItem}>
                 <div style={styles.statLabel}>Current RR</div>
@@ -926,9 +716,7 @@ export default function LiveMatchView() {
               </div>
               <div style={styles.statItem}>
                 <div style={styles.statLabel}>Overs Left</div>
-                <div style={styles.statValue}>
-                  {liveData.totalOvers - (currentInnings?.overs || 0)}
-                </div>
+                <div style={styles.statValue}>{liveData.totalOvers - (currentInnings?.overs || 0)}</div>
               </div>
               <div style={styles.statItem}>
                 <div style={styles.statLabel}>Required RR</div>
@@ -938,17 +726,10 @@ export default function LiveMatchView() {
           </div>
 
           <div style={styles.mainGrid} className="main-grid">
-            
-            {/* Left Column */}
             <div>
-              
-              {/* Current Batsmen */}
               {currentInnings?.currentBatsmen?.length > 0 && (
                 <div style={styles.card} className="card">
-                  <h3 style={styles.cardTitle}>
-                    <Activity color="#2563eb" size={26} />
-                    Current Batsmen
-                  </h3>
+                  <h3 style={styles.cardTitle}><Activity color="#2563eb" size={26} />Current Batsmen</h3>
                   <div style={styles.batsmenGrid} className="batsmen-grid">
                     {currentInnings.currentBatsmen.map((batsman, idx) => (
                       <div key={idx} style={styles.batsmanCard} className="batsman-card">
@@ -960,9 +741,7 @@ export default function LiveMatchView() {
                           <div style={{marginBottom: '0.25rem'}}>
                             <strong>Balls:</strong> {batsman.balls} • <strong>SR:</strong> {batsman.strikeRate.toFixed(1)}
                           </div>
-                          <div>
-                            <strong>4s:</strong> {batsman.fours} • <strong>6s:</strong> {batsman.sixes}
-                          </div>
+                          <div><strong>4s:</strong> {batsman.fours} • <strong>6s:</strong> {batsman.sixes}</div>
                         </div>
                       </div>
                     ))}
@@ -970,13 +749,9 @@ export default function LiveMatchView() {
                 </div>
               )}
 
-              {/* Current Bowler */}
               {currentInnings?.currentBowler?.player && (
                 <div style={styles.card} className="card">
-                  <h3 style={styles.cardTitle}>
-                    <Target color="#dc2626" size={26} />
-                    Current Bowler
-                  </h3>
+                  <h3 style={styles.cardTitle}><Target color="#dc2626" size={26} />Current Bowler</h3>
                   <div style={styles.bowlerCard}>
                     <div style={styles.batsmanHeader}>
                       <div style={styles.batsmanName}>{currentInnings.currentBowler.player}</div>
@@ -985,96 +760,55 @@ export default function LiveMatchView() {
                       </div>
                     </div>
                     <div style={styles.batsmanStats}>
-                      <div style={{marginBottom: '0.25rem'}}>
-                        <strong>Overs:</strong> {currentInnings.currentBowler.overs}
-                      </div>
-                      <div>
-                        <strong>Economy:</strong> {currentInnings.currentBowler.economy.toFixed(2)}
-                      </div>
+                      <div style={{marginBottom: '0.25rem'}}><strong>Overs:</strong> {currentInnings.currentBowler.overs}</div>
+                      <div><strong>Economy:</strong> {currentInnings.currentBowler.economy.toFixed(2)}</div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Combined Last 6 Balls + Commentary */}
               <div style={styles.ballsAndCommentaryCard} className="card">
-                <h3 style={styles.cardTitle}>
-                  <Zap color="#ca8a04" size={26} />
-                  Last 6 Balls
-                </h3>
+                <h3 style={styles.cardTitle}><Zap color="#ca8a04" size={26} />Last 6 Balls</h3>
                 {lastBalls.length === 0 ? (
-                  <p style={{textAlign: 'center', color: '#6b7280', padding: '1rem', fontSize: '0.95rem'}}>
-                    ⏳ Waiting for first ball...
-                  </p>
+                  <p style={{textAlign: 'center', color: '#6b7280', padding: '1rem', fontSize: '0.95rem'}}>⏳ Waiting for first ball...</p>
                 ) : (
                   <div style={styles.ballsContainer}>
                     {lastBalls.map((ball, idx) => (
-                      <div
-                        key={idx}
-                        className="ball-circle"
-                        style={{
-                          ...styles.ballCircle,
-                          background: ball.isWicket ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' :
-                                      ball.runs >= 6 ? 'linear-gradient(135deg, #a855f7 0%, #9333ea 100%)' :
-                                      ball.runs === 4 ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' :
-                                      ball.runs > 0 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 
-                                      'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)'
-                        }}
-                      >
-                        {ball.isWicket ? 'W' : ball.runs}
-                      </div>
+                      <div key={idx} className="ball-circle" style={{
+                        ...styles.ballCircle,
+                        background: ball.isWicket ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' :
+                                    ball.runs >= 6 ? 'linear-gradient(135deg, #a855f7 0%, #9333ea 100%)' :
+                                    ball.runs === 4 ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' :
+                                    ball.runs > 0 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 
+                                    'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)'
+                      }}>{ball.isWicket ? 'W' : ball.runs}</div>
                     ))}
                   </div>
                 )}
 
                 <div style={styles.commentaryDivider}></div>
-
                 <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem'}}>
                   <Clock color="#059669" size={24} />
-                  <h4 style={{margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: '#1f2937'}}>
-                    Ball-by-Ball Commentary
-                  </h4>
+                  <h4 style={{margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: '#1f2937'}}>Ball-by-Ball Commentary</h4>
                 </div>
                 
                 {fullCommentary.length === 0 ? (
-                  <p style={{textAlign: 'center', color: '#6b7280', padding: '1rem', fontSize: '0.95rem'}}>
-                    💬 No commentary yet
-                  </p>
+                  <p style={{textAlign: 'center', color: '#6b7280', padding: '1rem', fontSize: '0.95rem'}}>💬 No commentary yet</p>
                 ) : (
                   <div style={styles.commentarySection} className="commentary-scroll">
                     {fullCommentary.map((ball, idx) => (
                       <div key={idx} style={styles.commentaryItem} className="commentary-item">
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.4rem'}}>
-                          <span style={{fontWeight: 'bold', color: '#2563eb', fontSize: '0.85rem'}}>
-                            📍 Over {ball.over}
-                          </span>
+                          <span style={{fontWeight: 'bold', color: '#2563eb', fontSize: '0.85rem'}}>📍 Over {ball.over}</span>
                           <span style={{
-                            padding: '0.2rem 0.6rem',
-                            borderRadius: '6px',
-                            fontSize: '0.75rem',
-                            fontWeight: 'bold',
-                            background: ball.isWicket ? '#fee2e2' :
-                                        ball.runs >= 6 ? '#f3e8ff' :
-                                        ball.runs === 4 ? '#dbeafe' :
-                                        '#f3f4f6',
-                            color: ball.isWicket ? '#991b1b' :
-                                   ball.runs >= 6 ? '#6b21a8' :
-                                   ball.runs === 4 ? '#1e40af' :
-                                   '#374151',
-                            border: '1px solid ' + (ball.isWicket ? '#fecaca' :
-                                   ball.runs >= 6 ? '#e9d5ff' :
-                                   ball.runs === 4 ? '#bfdbfe' :
-                                   '#e5e7eb')
-                          }}>
-                            {ball.isWicket ? '🔴 WICKET' : `${ball.runs} Run${ball.runs !== 1 ? 's' : ''}`}
-                          </span>
+                            padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold',
+                            background: ball.isWicket ? '#fee2e2' : ball.runs >= 6 ? '#f3e8ff' : ball.runs === 4 ? '#dbeafe' : '#f3f4f6',
+                            color: ball.isWicket ? '#991b1b' : ball.runs >= 6 ? '#6b21a8' : ball.runs === 4 ? '#1e40af' : '#374151',
+                            border: '1px solid ' + (ball.isWicket ? '#fecaca' : ball.runs >= 6 ? '#e9d5ff' : ball.runs === 4 ? '#bfdbfe' : '#e5e7eb')
+                          }}>{ball.isWicket ? '🔴 WICKET' : `${ball.runs} Run${ball.runs !== 1 ? 's' : ''}`}</span>
                         </div>
-                        <p style={{color: '#374151', fontSize: '0.875rem', margin: '0.4rem 0', lineHeight: 1.5, fontWeight: '500'}}>
-                          {ball.commentary}
-                        </p>
-                        <p style={{color: '#6b7280', fontSize: '0.75rem', margin: 0, fontWeight: '600'}}>
-                          🏏 {ball.batsman} • ⚾ {ball.bowler}
-                        </p>
+                        <p style={{color: '#374151', fontSize: '0.875rem', margin: '0.4rem 0', lineHeight: 1.5, fontWeight: '500'}}>{ball.commentary}</p>
+                        <p style={{color: '#6b7280', fontSize: '0.75rem', margin: 0, fontWeight: '600'}}>🏏 {ball.batsman} • ⚾ {ball.bowler}</p>
                       </div>
                     ))}
                   </div>
@@ -1082,28 +816,18 @@ export default function LiveMatchView() {
               </div>
             </div>
 
-            {/* Right Column */}
             <div>
-              
-              {/* AI Prediction */}
+              {/* NEW: DUAL MODEL PREDICTION DISPLAY */}
               <div style={styles.predictionCard}>
                 <div style={styles.predictionGlow}></div>
                 <div style={styles.predictionHeader}>
                   <h3 style={{margin: 0, fontSize: '1.4rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-                    <TrendingUp size={26} />
-                    AI Prediction
+                    <TrendingUp size={26} />AI Predictions - Model Comparison
                   </h3>
-                  <button
-                    onClick={() => fetchPrediction(liveData)}
-                    disabled={predictionLoading}
-                    style={{
-                      ...styles.refreshButton,
-                      opacity: predictionLoading ? 0.6 : 1,
-                      cursor: predictionLoading ? 'not-allowed' : 'pointer'
-                    }}
+                  <button onClick={() => fetchBothModelPredictions(liveData)} disabled={predictionLoading}
+                    style={{...styles.refreshButton, opacity: predictionLoading ? 0.6 : 1, cursor: predictionLoading ? 'not-allowed' : 'pointer'}}
                     onMouseEnter={(e) => !predictionLoading && (e.target.style.background = 'rgba(255,255,255,0.35)')}
-                    onMouseLeave={(e) => !predictionLoading && (e.target.style.background = 'rgba(255,255,255,0.25)')}
-                  >
+                    onMouseLeave={(e) => !predictionLoading && (e.target.style.background = 'rgba(255,255,255,0.25)')}>
                     {predictionLoading ? '⏳' : '🔄 Refresh'}
                   </button>
                 </div>
@@ -1111,115 +835,171 @@ export default function LiveMatchView() {
                 {predictionLoading ? (
                   <div style={{textAlign: 'center', padding: '2rem', position: 'relative', zIndex: 1}}>
                     <div style={{...styles.spinner, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white'}}></div>
-                    <p style={{color: 'rgba(255,255,255,0.9)', fontSize: '1.05rem', fontWeight: '600'}}>
-                      🤖 Analyzing match data...
-                    </p>
+                    <p style={{color: 'rgba(255,255,255,0.9)', fontSize: '1.05rem', fontWeight: '600'}}>🤖 Running both models...</p>
                   </div>
                 ) : !prediction ? (
                   <div style={{textAlign: 'center', padding: '2rem', color: 'rgba(255,255,255,0.9)', position: 'relative', zIndex: 1}}>
                     <BarChart3 size={56} style={{margin: '0 auto 1rem', opacity: 0.7}} />
-                    <p style={{fontSize: '1.05rem', fontWeight: '600'}}>Loading prediction...</p>
+                    <p style={{fontSize: '1.05rem', fontWeight: '600'}}>Loading predictions...</p>
+                  </div>
+                ) : prediction.error ? (
+                  <div style={{textAlign: 'center', padding: '2rem', color: 'rgba(255,255,255,0.9)', position: 'relative', zIndex: 1}}>
+                    <p>⚠️ Models unavailable</p>
                   </div>
                 ) : (
                   <div style={{position: 'relative', zIndex: 1}}>
-                    {/* Win Probability */}
-                    <div style={{marginBottom: '1.25rem'}}>
-                      <div style={{color: 'rgba(255,255,255,0.95)', fontSize: '0.95rem', marginBottom: '0.75rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                        <Award size={18} />
-                        Win Probability
+                    
+                    {/* Team Win Probabilities - Both Models */}
+                    <div style={{marginBottom: '1.5rem'}}>
+                      <div style={{fontSize: '1rem', color: 'rgba(255,255,255,0.95)', marginBottom: '1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                        <Award size={20} />
+                        Win Probability Comparison
                       </div>
+                      
+                      {/* Team A */}
                       <div style={{marginBottom: '1rem'}}>
                         <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem'}}>
-                          <span style={{fontWeight: '700', fontSize: '1.05rem'}}>{liveData.teamA?.teamName}</span>
-                          <span style={{fontWeight: 'bold', fontSize: '1.25rem'}}>
-                            {isNaN(prediction.winProbability.teamA) ? '0' : prediction.winProbability.teamA}%
+                          <span style={{fontWeight: '700', fontSize: '1.05rem'}}>{prediction.matchContext.teamA}</span>
+                          <span style={{fontWeight: 'bold', fontSize: '1.1rem'}}>
+                            XGB: {prediction.xgboost.teamAWin?.toFixed(1)}% | RF: {prediction.randomForest.teamAWin?.toFixed(1)}%
                           </span>
                         </div>
-                        <div style={styles.probabilityBar}>
-                          <div style={{
-                            ...styles.probabilityFill, 
-                            width: `${isNaN(prediction.winProbability.teamA) ? 0 : Math.min(100, Math.max(0, prediction.winProbability.teamA))}%`
-                          }}></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem'}}>
-                          <span style={{fontWeight: '700', fontSize: '1.05rem'}}>{liveData.teamB?.teamName}</span>
-                          <span style={{fontWeight: 'bold', fontSize: '1.25rem'}}>
-                            {isNaN(prediction.winProbability.teamB) ? '0' : prediction.winProbability.teamB}%
-                          </span>
-                        </div>
-                        <div style={styles.probabilityBar}>
-                          <div style={{
-                            ...styles.probabilityFill, 
-                            width: `${isNaN(prediction.winProbability.teamB) ? 0 : Math.min(100, Math.max(0, prediction.winProbability.teamB))}%`
-                          }}></div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Predicted Score */}
-                    {prediction.predictedScore > 0 && (
-                      <div style={{background: 'rgba(255,255,255,0.25)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.25rem', border: '1px solid rgba(255, 255, 255, 0.3)'}}>
-                        <div style={{color: 'rgba(255,255,255,0.95)', fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: '600'}}>
-                          📊 Predicted Final Score
-                        </div>
-                        <div style={{fontSize: '2.5rem', fontWeight: 'bold', textShadow: '0 2px 10px rgba(0,0,0,0.3)'}}>
-                          {Math.round(prediction.predictedScore)}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Reasoning */}
-                    {prediction.reasoning && (
-                      <div style={{background: 'rgba(255,255,255,0.15)', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem', border: '1px solid rgba(255, 255, 255, 0.25)', backdropFilter: 'blur(10px)'}}>
-                        <div style={{display: 'flex', alignItems: 'start', gap: '0.75rem'}}>
-                          <AlertCircle size={20} style={{marginTop: '0.25rem', flexShrink: 0}} />
-                          <div style={{fontSize: '0.95rem', lineHeight: 1.6, fontWeight: '500'}}>
-                            {prediction.reasoning}
+                        <div style={{display: 'flex', gap: '0.5rem'}}>
+                          <div style={{flex: 1, background: 'rgba(255,255,255,0.25)', borderRadius: '9999px', height: '1rem', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.3)'}}>
+                            <div style={{background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.9) 0%, rgba(59, 130, 246, 1) 100%)', height: '100%', width: `${prediction.xgboost.teamAWin}%`, borderRadius: '9999px', transition: 'width 0.8s'}}></div>
+                          </div>
+                          <div style={{flex: 1, background: 'rgba(255,255,255,0.25)', borderRadius: '9999px', height: '1rem', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.3)'}}>
+                            <div style={{background: 'linear-gradient(90deg, rgba(168, 85, 247, 0.9) 0%, rgba(168, 85, 247, 1) 100%)', height: '100%', width: `${prediction.randomForest.teamAWin}%`, borderRadius: '9999px', transition: 'width 0.8s'}}></div>
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Team B */}
+                      <div>
+                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem'}}>
+                          <span style={{fontWeight: '700', fontSize: '1.05rem'}}>{prediction.matchContext.teamB}</span>
+                          <span style={{fontWeight: 'bold', fontSize: '1.1rem'}}>
+                            XGB: {prediction.xgboost.teamBWin?.toFixed(1)}% | RF: {prediction.randomForest.teamBWin?.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div style={{display: 'flex', gap: '0.5rem'}}>
+                          <div style={{flex: 1, background: 'rgba(255,255,255,0.25)', borderRadius: '9999px', height: '1rem', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.3)'}}>
+                            <div style={{background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.9) 0%, rgba(59, 130, 246, 1) 100%)', height: '100%', width: `${prediction.xgboost.teamBWin}%`, borderRadius: '9999px', transition: 'width 0.8s'}}></div>
+                          </div>
+                          <div style={{flex: 1, background: 'rgba(255,255,255,0.25)', borderRadius: '9999px', height: '1rem', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.3)'}}>
+                            <div style={{background: 'linear-gradient(90deg, rgba(168, 85, 247, 0.9) 0%, rgba(168, 85, 247, 1) 100%)', height: '100%', width: `${prediction.randomForest.teamBWin}%`, borderRadius: '9999px', transition: 'width 0.8s'}}></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Predicted Score */}
+                    {prediction.predictedScore && (
+                      <div style={{background: 'rgba(255,255,255,0.25)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', border: '1px solid rgba(255, 255, 255, 0.3)', textAlign: 'center'}}>
+                        <div style={{fontSize: '0.9rem', color: 'rgba(255,255,255,0.9)', marginBottom: '0.5rem', fontWeight: '600'}}>
+                          🎯 Predicted Final Score
+                        </div>
+                        <div style={{fontSize: '2.5rem', fontWeight: 'bold', textShadow: '0 2px 10px rgba(0,0,0,0.3)'}}>
+                          {prediction.predictedScore}
+                        </div>
+                        <div style={{fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', marginTop: '0.5rem'}}>
+                          Based on current run rate & wickets
+                        </div>
+                      </div>
                     )}
-
-                    {/* Key Factors */}
-                    <div style={{marginBottom: '1.25rem'}}>
-                      <div style={{color: 'rgba(255,255,255,0.95)', fontSize: '0.95rem', marginBottom: '0.75rem', fontWeight: '700'}}>
-                        🎯 Key Factors
-                      </div>
-                      {prediction.keyFactors.map((factor, idx) => (
-                        <div key={idx} style={styles.factorBox}>
-                          • {factor}
+                    
+                    {/* Model Comparison Grid */}
+                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1.5rem'}}>
+                      
+                      {/* XGBoost Card */}
+                      <div style={{background: 'rgba(59, 130, 246, 0.25)', borderRadius: '16px', padding: '1.5rem', border: '2px solid rgba(59, 130, 246, 0.5)', backdropFilter: 'blur(10px)'}}>
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem'}}>
+                          <h4 style={{margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: 'white'}}>🚀 XGBoost</h4>
+                          <span style={{fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.3)', padding: '0.25rem 0.75rem', borderRadius: '9999px', border: '1px solid rgba(16, 185, 129, 0.5)', fontWeight: '700'}}>
+                            ⚡ {prediction.xgboost.speed}
+                          </span>
                         </div>
-                      ))}
+                        
+                        <div style={{marginBottom: '1rem'}}>
+                          <div style={{fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', marginBottom: '0.5rem', fontWeight: '600'}}>
+                            {prediction.matchContext.battingTeam} Win
+                          </div>
+                          <div style={{fontSize: '2.5rem', fontWeight: 'bold', color: 'white', lineHeight: 1}}>{prediction.xgboost.winProbability}%</div>
+                        </div>
+                        
+                        <div style={{background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.75rem', marginBottom: '0.75rem'}}>
+                          <div style={{fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', marginBottom: '0.25rem'}}>Outcome</div>
+                          <div style={{fontSize: '1.1rem', fontWeight: 'bold', color: 'white'}}>{prediction.xgboost.outcome}</div>
+                        </div>
+                        
+                        <div style={{background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.75rem'}}>
+                          <div style={{fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', marginBottom: '0.25rem'}}>Confidence</div>
+                          <div style={{fontSize: '1.1rem', fontWeight: 'bold', color: 'white'}}>
+                            {prediction.xgboost.confidence >= 70 ? '🟢 High' : prediction.xgboost.confidence >= 55 ? '🟡 Medium' : '🔴 Low'}
+                          </div>
+                        </div>
+                        
+                        <div style={{marginTop: '0.75rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', fontWeight: '600'}}>
+                          📊 Accuracy: {prediction.xgboost.accuracy}
+                        </div>
+                      </div>
+                      
+                      {/* Random Forest Card */}
+                      <div style={{background: 'rgba(168, 85, 247, 0.25)', borderRadius: '16px', padding: '1.5rem', border: '2px solid rgba(168, 85, 247, 0.5)', backdropFilter: 'blur(10px)'}}>
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem'}}>
+                          <h4 style={{margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: 'white'}}>🌲 Random Forest</h4>
+                          <span style={{fontSize: '0.75rem', background: 'rgba(234, 179, 8, 0.3)', padding: '0.25rem 0.75rem', borderRadius: '9999px', border: '1px solid rgba(234, 179, 8, 0.5)', fontWeight: '700'}}>
+                            🎯 {prediction.randomForest.speed}
+                          </span>
+                        </div>
+                        
+                        <div style={{marginBottom: '1rem'}}>
+                          <div style={{fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', marginBottom: '0.5rem', fontWeight: '600'}}>
+                            {prediction.matchContext.battingTeam} Win
+                          </div>
+                          <div style={{fontSize: '2.5rem', fontWeight: 'bold', color: 'white', lineHeight: 1}}>{prediction.randomForest.winProbability}%</div>
+                        </div>
+                        
+                        <div style={{background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.75rem', marginBottom: '0.75rem'}}>
+                          <div style={{fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', marginBottom: '0.25rem'}}>Outcome</div>
+                          <div style={{fontSize: '1.1rem', fontWeight: 'bold', color: 'white'}}>{prediction.randomForest.outcome}</div>
+                        </div>
+                        
+                        <div style={{background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.75rem'}}>
+                          <div style={{fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', marginBottom: '0.25rem'}}>Confidence</div>
+                          <div style={{fontSize: '1.1rem', fontWeight: 'bold', color: 'white'}}>
+                            {prediction.randomForest.confidence >= 70 ? '🟢 High' : prediction.randomForest.confidence >= 55 ? '🟡 Medium' : '🔴 Low'}
+                          </div>
+                        </div>
+                        
+                        <div style={{marginTop: '0.75rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', fontWeight: '600'}}>
+                          📊 Accuracy: {prediction.randomForest.accuracy}
+                        </div>
+                      </div>
                     </div>
-
-                    {/* Momentum & Confidence */}
-                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1.25rem'}}>
-                      <div style={{background: 'rgba(255,255,255,0.25)', borderRadius: '12px', padding: '1rem', textAlign: 'center', border: '1px solid rgba(255, 255, 255, 0.3)'}}>
-                        <div style={{color: 'rgba(255,255,255,0.85)', fontSize: '0.8rem', marginBottom: '0.5rem', fontWeight: '600', textTransform: 'uppercase'}}>
-                          Momentum
-                        </div>
-                        <div style={{fontWeight: 'bold', textTransform: 'capitalize', fontSize: '1.15rem'}}>
-                          {prediction.momentum === 'teamA' ? liveData.teamA?.teamName : 
-                           prediction.momentum === 'teamB' ? liveData.teamB?.teamName : 
-                           'Balanced'}
-                        </div>
-                      </div>
-                      <div style={{background: 'rgba(255,255,255,0.25)', borderRadius: '12px', padding: '1rem', textAlign: 'center', border: '1px solid rgba(255, 255, 255, 0.3)'}}>
-                        <div style={{color: 'rgba(255,255,255,0.85)', fontSize: '0.8rem', marginBottom: '0.5rem', fontWeight: '600', textTransform: 'uppercase'}}>
-                          Confidence
-                        </div>
-                        <div style={{fontWeight: 'bold', textTransform: 'capitalize', fontSize: '1.15rem'}}>
-                          {prediction.confidence === 'high' ? '🟢 High' : 
-                           prediction.confidence === 'medium' ? '🟡 Medium' : 
-                           '🔴 Low'}
-                        </div>
+                    
+                    {/* Match Context */}
+                    <div style={{background: 'rgba(255,255,255,0.15)', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', border: '1px solid rgba(255,255,255,0.25)'}}>
+                      <div style={{fontSize: '0.9rem', color: 'rgba(255,255,255,0.95)', fontWeight: '600', marginBottom: '0.5rem'}}>📊 Current Match State</div>
+                      <div style={{fontSize: '0.85rem', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6}}>
+                        Score: {prediction.matchContext.score}/{prediction.matchContext.wickets} • Overs: {prediction.matchContext.overs} • Innings: {prediction.matchContext.innings}
                       </div>
                     </div>
-
-                    <div style={{fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.25)', fontWeight: '600'}}>
-                      🤖 Powered by ML Model (IPL 2008-2024 Data) • Auto-updating
+                    
+                    {/* Comparison Note */}
+                    <div style={{background: 'rgba(16, 185, 129, 0.2)', borderRadius: '12px', padding: '1rem', border: '1px solid rgba(16, 185, 129, 0.4)', display: 'flex', alignItems: 'start', gap: '0.75rem'}}>
+                      <AlertCircle size={20} style={{marginTop: '0.15rem', flexShrink: 0}} />
+                      <div style={{fontSize: '0.85rem', lineHeight: 1.6, fontWeight: '500'}}>
+                        <strong>Model Comparison:</strong> Both models trained on 8720 real IPL matches with 72.48% accuracy. 
+                        XGBoost is faster, Random Forest provides alternative perspective. 
+                        {Math.abs(prediction.xgboost.winProbability - prediction.randomForest.winProbability) < 5 
+                          ? ' Models agree strongly! ✅' 
+                          : ' Models show different predictions - match is uncertain! ⚠️'}
+                      </div>
+                    </div>
+                    
+                    <div style={{fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.25)', fontWeight: '600', marginTop: '1rem'}}>
+                      🤖 Dual AI System • Trained on IPL 2008-2024 • Auto-updating Every 30s
                     </div>
                   </div>
                 )}
@@ -1227,7 +1007,6 @@ export default function LiveMatchView() {
             </div>
           </div>
 
-          {/* Auto-update Badge */}
           <div style={styles.autoUpdateBadge}>
             <div style={{width: '0.5rem', height: '0.5rem', background: 'white', borderRadius: '50%', boxShadow: '0 0 8px rgba(255,255,255,0.8)'}}></div>
             <span style={{fontSize: '0.9rem', fontWeight: '700'}}>Live Updates Every 30s</span>

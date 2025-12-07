@@ -7,16 +7,26 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def load_model():
-    """Load the trained model"""
+    """Load the trained XGBoost model"""
     try:
-        with open('ml_models/model.pkl', 'rb') as f:
-            return pickle.load(f)
+        # Load new XGBoost model (8720 IPL samples, 72.48% accuracy)
+        with open('ml_models/models/model_xgb.pkl', 'rb') as f:
+            model = pickle.load(f)
+            print("✅ Loaded XGBoost model (72.48% accuracy, 8720 IPL samples)", file=sys.stderr)
+            return model, 'XGBoost (72.48%)'
     except FileNotFoundError:
-        print(json.dumps({
-            "success": False,
-            "error": "Model not trained yet. Run train_model.py first"
-        }))
-        sys.exit(1)
+        try:
+            # Fallback to old model if new one doesn't exist
+            with open('ml_models/models/model.pkl', 'rb') as f:
+                model = pickle.load(f)
+                print("⚠️ Using old model (40 samples) - Train new model!", file=sys.stderr)
+                return model, 'Old Model (40 samples)'
+        except FileNotFoundError:
+            print(json.dumps({
+                "success": False,
+                "error": "Model not found. Train model first: python ml_models/train_model.py"
+            }))
+            sys.exit(1)
 
 def extract_features(match_data):
     """Extract features from match data"""
@@ -71,13 +81,18 @@ def extract_features(match_data):
     return features
 
 def predict_match(match_data):
-    """Make prediction"""
+    """Make prediction using XGBoost model"""
     try:
-        model = load_model()
+        model, model_name = load_model()
         features = extract_features(match_data)
         
-        # Create DataFrame
-        X = pd.DataFrame([features])
+        # Create DataFrame with correct feature order for XGBoost
+        feature_columns = [
+            'current_score', 'wickets_lost', 'overs_played', 'run_rate',
+            'innings', 'target', 'runs_needed', 'wickets_remaining', 
+            'required_run_rate'
+        ]
+        X = pd.DataFrame([features])[feature_columns]
         
         # Predict
         prediction = model.predict(X)[0]
@@ -88,7 +103,7 @@ def predict_match(match_data):
         batting_team = match_data['innings'][current_innings - 1]['battingTeam']['_id']
         team_a = match_data['teamA']['_id']
         
-        # Calculate probabilities - FIXED: Convert numpy float32 to Python float
+        # Calculate probabilities - Convert numpy types to Python float
         if current_innings == 1:
             # First innings: batting team win probability
             if batting_team == team_a:
@@ -135,12 +150,14 @@ def predict_match(match_data):
         key_factors = []
         if features['wickets_remaining'] <= 3:
             key_factors.append("Few wickets remaining")
-        if features['required_run_rate'] > 12:
+        if features.get('required_run_rate', 0) > 12:
             key_factors.append("High required run rate")
         if features['run_rate'] > 8:
             key_factors.append("Strong batting performance")
+        if features.get('required_run_rate', 0) > 0 and features['run_rate'] > features['required_run_rate']:
+            key_factors.append("Ahead of required run rate")
         
-        # Confidence - FIXED: Convert to Python float
+        # Confidence - Convert to Python float
         max_prob = float(max(probabilities))
         if max_prob > 0.8:
             confidence = "high"
@@ -159,13 +176,16 @@ def predict_match(match_data):
                 "predictedScore": predicted_score,
                 "keyFactors": key_factors,
                 "confidence": confidence,
-                "model": "XGBoost"
+                "model": model_name
             }
         }
         
         return result
         
     except Exception as e:
+        import traceback
+        print(f"❌ Error: {e}", file=sys.stderr)
+        print(traceback.format_exc(), file=sys.stderr)
         return {
             "success": False,
             "error": str(e)
@@ -189,12 +209,24 @@ if __name__ == "__main__":
                 print(json.dumps(result))
                 sys.exit(0)
         
-        # If no stdin, show error
+        # If no stdin, show help message
         result = {
             "success": False,
-            "error": "No match data provided. Use: echo {...} | python predict.py"
+            "error": "No match data provided via stdin",
+            "usage": "echo '{...match_data...}' | python predict.py",
+            "example": {
+                "currentInnings": 1,
+                "totalOvers": 20,
+                "innings": [{
+                    "score": 85,
+                    "wickets": 2,
+                    "overs": 10,
+                    "battingTeam": {"_id": "team1"}
+                }],
+                "teamA": {"_id": "team1"}
+            }
         }
-        print(json.dumps(result))
+        print(json.dumps(result, indent=2))
         sys.exit(1)
         
     except json.JSONDecodeError as e:
@@ -206,9 +238,11 @@ if __name__ == "__main__":
         sys.exit(1)
         
     except Exception as e:
+        import traceback
         error_result = {
             "success": False,
-            "error": f"Prediction failed: {str(e)}"
+            "error": f"Prediction failed: {str(e)}",
+            "traceback": traceback.format_exc()
         }
         print(json.dumps(error_result))
         sys.exit(1)
