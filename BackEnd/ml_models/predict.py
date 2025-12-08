@@ -3,30 +3,38 @@ import json
 import pickle
 import pandas as pd
 import numpy as np
+import os
 import warnings
 warnings.filterwarnings('ignore')
 
 def load_model():
     """Load the trained XGBoost model"""
-    try:
-        # Load new XGBoost model (8720 IPL samples, 72.48% accuracy)
-        with open('ml_models/models/model_xgb.pkl', 'rb') as f:
-            model = pickle.load(f)
-            print("✅ Loaded XGBoost model (72.48% accuracy, 8720 IPL samples)", file=sys.stderr)
-            return model, 'XGBoost (72.48%)'
-    except FileNotFoundError:
-        try:
-            # Fallback to old model if new one doesn't exist
-            with open('ml_models/models/model.pkl', 'rb') as f:
-                model = pickle.load(f)
-                print("⚠️ Using old model (40 samples) - Train new model!", file=sys.stderr)
-                return model, 'Old Model (40 samples)'
-        except FileNotFoundError:
-            print(json.dumps({
-                "success": False,
-                "error": "Model not found. Train model first: python ml_models/train_model.py"
-            }))
-            sys.exit(1)
+    # Try multiple paths
+    paths_to_try = [
+        'models/model_xgb.pkl',            # ✅ Correct when running from ml_models/
+        'ml_models/models/model_xgb.pkl',  # When running from BackEnd/
+        './models/model_xgb.pkl',
+        '../models/model_xgb.pkl'
+    ]
+    
+    for model_path in paths_to_try:
+        if os.path.exists(model_path):
+            try:
+                with open(model_path, 'rb') as f:
+                    model = pickle.load(f)
+                    print(f"✅ Loaded XGBoost model from: {model_path} (72.48% accuracy, 8720 IPL samples)", file=sys.stderr)
+                    return model, 'XGBoost (72.48%)'
+            except Exception as e:
+                print(f"⚠️ Failed to load from {model_path}: {e}", file=sys.stderr)
+                continue
+    
+    # If no model found
+    print(json.dumps({
+        "success": False,
+        "error": "Model not found. Train model first: python train_model.py",
+        "searched_paths": paths_to_try
+    }))
+    sys.exit(1)
 
 def extract_features(match_data):
     """Extract features from match data"""

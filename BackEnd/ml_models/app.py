@@ -18,8 +18,9 @@ print(f"📂 Script Location: {os.path.dirname(os.path.abspath(__file__))}")
 # Load XGBoost Model
 xgb_model = None
 xgb_paths_to_try = [
-    'ml_models/models/model_xgb.pkl',
-    'models/model_xgb.pkl',
+    'models/model_xgb.pkl',            # ✅ First try - correct path
+    './models/model_xgb.pkl',
+    'ml_models/models/model_xgb.pkl',  # Fallback
     './model_xgb.pkl',
     '../models/model_xgb.pkl'
 ]
@@ -37,18 +38,17 @@ for model_path in xgb_paths_to_try:
             break
         except Exception as e:
             print(f"❌ Error loading XGBoost from {model_path}: {e}")
-    else:
-        print(f"⚠️ Path not found: {model_path}")
 
 if not xgb_model:
     print("❌ XGBoost model NOT loaded!")
-    print("💡 Solution: Run 'python ml_models/train_model.py' to train XGBoost")
+    print("💡 Solution: Run 'python train_model.py' to train XGBoost")
 
 # Load Random Forest Model
 rf_model = None
 rf_paths_to_try = [
-    'ml_models/models/model_rf.pkl',
-    'models/model_rf.pkl',
+    'models/model_rf.pkl',            # ✅ First try - correct path
+    './models/model_rf.pkl',
+    'ml_models/models/model_rf.pkl',  # Fallback
     './model_rf.pkl',
     '../models/model_rf.pkl'
 ]
@@ -66,12 +66,10 @@ for model_path in rf_paths_to_try:
             break
         except Exception as e:
             print(f"❌ Error loading Random Forest from {model_path}: {e}")
-    else:
-        print(f"⚠️ Path not found: {model_path}")
 
 if not rf_model:
     print("❌ Random Forest model NOT loaded!")
-    print("💡 Solution: Run 'python ml_models/train_random_forest.py' to train RF")
+    print("💡 Solution: Run 'python train_random_forest.py' to train RF")
 
 print("=" * 70)
 print(f"✅ Models Loaded: XGBoost={'Yes' if xgb_model else 'No'}, Random Forest={'Yes' if rf_model else 'No'}")
@@ -272,7 +270,7 @@ def predict_both():
         else:
             results['xgboost'] = {
                 'error': 'XGBoost model not available',
-                'message': 'Train model: python ml_models/train_model.py',
+                'message': 'Train model: python train_model.py',
                 'win_probability': 50.0,
                 'loss_probability': 50.0,
                 'confidence': 50.0,
@@ -297,7 +295,7 @@ def predict_both():
         else:
             results['random_forest'] = {
                 'error': 'Random Forest model not available',
-                'message': 'Train model: python ml_models/train_random_forest.py',
+                'message': 'Train model: python train_random_forest.py',
                 'win_probability': 50.0,
                 'loss_probability': 50.0,
                 'confidence': 50.0,
@@ -418,10 +416,10 @@ if __name__ == '__main__':
         print("\n⚠️  WARNING: Some models are not loaded!")
         print("💡 Solutions:")
         if not xgb_model:
-            print("   1. Train XGBoost: python ml_models/train_model.py")
+            print("   1. Train XGBoost: python train_model.py")
         if not rf_model:
-            print("   2. Train Random Forest: python ml_models/train_random_forest.py")
-        print("   3. Check model files exist in ml_models/models/")
+            print("   2. Train Random Forest: python train_random_forest.py")
+        print("   3. Check model files exist in models/")
     
     print("=" * 70 + "\n")
     

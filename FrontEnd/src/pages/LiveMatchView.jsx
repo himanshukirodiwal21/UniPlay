@@ -1016,7 +1016,7 @@ export default function LiveMatchView() {
                         </div>
                         
                         <div style={{marginTop: '0.75rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', fontWeight: '600'}}>
-                          📊 Accuracy: {prediction.xgboost.accuracy ?? '72.48%'}
+                          {/* 📊 Accuracy: {prediction.xgboost.accuracy ?? '72.48%'} */}
                         </div>
                       </div>
                       
@@ -1049,7 +1049,7 @@ export default function LiveMatchView() {
                         </div>
                         
                         <div style={{marginTop: '0.75rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', fontWeight: '600'}}>
-                          📊 Accuracy: {prediction.randomForest.accuracy ?? '72.48%'}
+                          {/* 📊 Accuracy: {prediction.randomForest.accuracy ?? '72.48%'} */}
                         </div>
                       </div>
                     </div>
@@ -1066,8 +1066,8 @@ export default function LiveMatchView() {
                     <div style={{background: 'rgba(16, 185, 129, 0.2)', borderRadius: '12px', padding: '1rem', border: '1px solid rgba(16, 185, 129, 0.4)', display: 'flex', alignItems: 'start', gap: '0.75rem'}}>
                       <AlertCircle size={20} style={{marginTop: '0.15rem', flexShrink: 0}} />
                       <div style={{fontSize: '0.85rem', lineHeight: 1.6, fontWeight: '500'}}>
-                        <strong>Model Comparison:</strong> Both models trained on 8720 real IPL matches with 72.48% accuracy. 
-                        XGBoost is faster, Random Forest provides alternative perspective. 
+                        {/* <strong>Model Comparison:</strong> Both models trained on 8720 real IPL matches with 72.48% accuracy. 
+                        XGBoost is faster, Random Forest provides alternative perspective.  */}
                         {Math.abs((prediction.xgboost.winProbability || 0) - (prediction.randomForest.winProbability || 0)) < 5 
                           ? ' Models agree strongly! ✅' 
                           : ' Models show different predictions - match is uncertain! ⚠️'}
