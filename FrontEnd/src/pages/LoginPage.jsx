@@ -11,6 +11,7 @@ import {
   EyeOff,
   Shield,
 } from "lucide-react";
+import api from "../services/api";
 
 export default function AuthPages() {
   const navigate = useNavigate();
@@ -106,31 +107,34 @@ export default function AuthPages() {
   const handleLogin = async () => {
     if (!validateLogin()) return;
     setIsSubmitting(true);
-    try {
-      const res = await fetch("http://localhost:8000/api/v1/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(loginData),
-        credentials: "include",
-      });
-      const data = await res.json();
 
-      if (res.ok) {
-        const userData = {
-          id: data.data.user._id || data.data.user.id,
-          fullName: data.data.user.fullName,
-          username: data.data.user.username,
-          email: data.data.user.email,
-          role: "user",
-        };
-        localStorage.setItem("currentUser", JSON.stringify(userData));
-        alert("Login successful: " + loginData.email);
-        navigate("/", { replace: true });
-      } else if (res.status === 403 && data.needsVerification) {
+    try {
+      // ✅ correct endpoint + data
+      const res = await api.post("/api/v1/users/login", loginData);
+
+      // ✅ axios response data
+      const data = res.data;
+
+      const userData = {
+        id: data.data.user._id || data.data.user.id,
+        fullName: data.data.user.fullName,
+        username: data.data.user.username,
+        email: data.data.user.email,
+        role: "user",
+      };
+
+      localStorage.setItem("currentUser", JSON.stringify(userData));
+      alert("Login successful: " + loginData.email);
+      navigate("/", { replace: true });
+
+    } catch (err) {
+      // axios error handling
+      if (err.response?.status === 403 && err.response.data?.needsVerification) {
+        const user = err.response.data.user;
         setFormData({
-          fullName: data.user.fullName,
-          username: data.user.username,
-          email: data.user.email,
+          fullName: user.fullName,
+          username: user.username,
+          email: user.email,
           password: loginData.password,
           otp: "",
         });
@@ -138,28 +142,23 @@ export default function AuthPages() {
         setErrors({});
         setCurrentPage("signup");
         setStep(2);
-        alert(data.message);
+        alert(err.response.data.message);
       } else {
-        alert(data?.message || "Login failed");
+        console.error(err);
+        alert(err.response?.data?.message || "Login failed");
       }
-    } catch (err) {
-      console.error(err);
-      alert("Invalid Detail");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+
   const handleAdminLogin = async () => {
     if (!validateAdminLogin()) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch("http://localhost:8000/api/v1/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(adminLoginData),
-        credentials: "include",
-      });
+      const res = await api.post("/api/v1/admin/login", adminLoginData);
+
       const data = await res.json();
 
       if (res.ok) {
@@ -187,18 +186,14 @@ export default function AuthPages() {
     if (!validateStep1()) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch("http://localhost:8000/api/v1/users/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: formData.fullName,
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-        }),
-        credentials: "include",
+      const res = await api.post("/api/v1/users/register", {
+        fullName: formData.fullName,
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
       });
-      const data = await res.json();
+
+      const data = res.data;
 
       if (res.ok || res.status === 200) {
         setStep(2);
@@ -228,16 +223,10 @@ export default function AuthPages() {
     }
     setIsSubmitting(true);
     try {
-      const res = await fetch(
-        "http://localhost:8000/api/v1/users/verifyemail",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: formData.otp }),
-          credentials: "include",
-        }
-      );
-      const data = await res.json();
+      const res = await api.post("/api/v1/users/verifyemail", {
+        code: formData.otp,
+      });
+      const data = res.data;
       if (res.ok) {
         setStep(3);
       } else {
@@ -254,18 +243,13 @@ export default function AuthPages() {
   const handleResendOTP = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch("http://localhost:8000/api/v1/users/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: formData.fullName,
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-        }),
-        credentials: "include",
+      const res = await api.post("/api/v1/users/register", {
+        fullName: formData.fullName,
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
       });
-      const data = await res.json();
+      const data = res.data;
       if (res.ok) {
         setFormData((prev) => ({ ...prev, otp: "" }));
         alert(data?.message || "OTP resent to " + formData.email);
