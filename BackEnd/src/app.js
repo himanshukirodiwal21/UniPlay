@@ -7,22 +7,27 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://uniplay-qim1ks304-himanshukirodiwal21-gmailcoms-projects.vercel.app"
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // allow server-to-server / Postman
     if (!origin) return callback(null, true);
 
+    // ✅ allow localhost
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+      return callback(null, true);
     }
+
+    // ✅ allow ANY Vercel deployment
+    if (origin.endsWith(".vercel.app")) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
 }));
+
 
 // ✅ IMPORTANT: allow preflight requests
 // app.options("/*", cors());
