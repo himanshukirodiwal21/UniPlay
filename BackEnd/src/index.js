@@ -11,13 +11,28 @@ dotenv.config({ path: './.env' });
 const httpServer = createServer(app);
 
 // ✅ Initialize Socket.IO
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://uniplay-qim1ks304-himanshukirodiwal21-gmailcoms-projects.vercel.app"
+];
+
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    origin: (origin, callback) => {
+      // allow server-to-server / Postman
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST"]
   }
 });
+
 
 // ✅ Socket.IO Connection Handler
 io.on('connection', (socket) => {
