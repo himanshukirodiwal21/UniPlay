@@ -8,7 +8,7 @@ import {
   deleteTeamRegistration,
   updateRegistrationStatus,
   getAllTeams
-} from "../controllers/teamregistration.controller.js";
+} from "../controllers/teamRegistration.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { isAdmin } from "../middlewares/isAdmin.middleware.js";
 
